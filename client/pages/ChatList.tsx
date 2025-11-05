@@ -177,8 +177,3 @@ export default function ChatList() {
     </div>
   );
 }
-
-function MessageCircle() {
-  const { MessageCircle: Icon } = require('lucide-react');
-  return <Icon />;
-}
