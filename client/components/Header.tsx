@@ -1,9 +1,10 @@
-import { MoreVertical, Camera, MessageCircle, Search, LogOut } from 'lucide-react';
+import { MoreVertical, Camera, MessageCircle, Search, LogOut, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -12,10 +13,13 @@ export default function Header() {
     navigate('/');
   };
 
+  const isChatsRoute = location.pathname.startsWith('/chat') || location.pathname === '/chats';
+  const isCRMRoute = location.pathname.startsWith('/crm');
+
   return (
     <header className="border-b border-border bg-background">
       <div className="px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary">
               <MessageCircle className="h-5 w-5 text-primary-foreground" />
@@ -49,6 +53,32 @@ export default function Header() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex gap-4 border-t border-border pt-3">
+          <button
+            onClick={() => navigate('/chats')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              isChatsRoute
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Messages
+          </button>
+          <button
+            onClick={() => navigate('/crm')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              isCRMRoute
+                ? 'bg-primary/20 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            CRM
+          </button>
         </div>
       </div>
     </header>
