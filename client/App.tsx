@@ -11,6 +11,8 @@ import Login from "./pages/Login";
 import QRConnect from "./pages/QRConnect";
 import Index from "./pages/Index";
 import ChatDetail from "./pages/ChatDetail";
+import CRMDashboard from "./pages/CRMDashboard";
+import CustomerProfile from "./pages/CustomerProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
