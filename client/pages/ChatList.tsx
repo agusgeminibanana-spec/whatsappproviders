@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Edit3 } from 'lucide-react';
+import { Search, Plus, Edit3, MessageCircle } from 'lucide-react';
 
 interface Chat {
   id: string;
