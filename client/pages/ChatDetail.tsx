@@ -154,7 +154,7 @@ export default function ChatDetail() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/chats')}
               className="p-2 hover:bg-secondary rounded-full transition-colors sm:hidden"
             >
               <ArrowLeft className="h-5 w-5 text-foreground" />
