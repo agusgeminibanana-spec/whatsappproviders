@@ -118,7 +118,7 @@ export default function ChatList() {
             <Link
               key={chat.id}
               to={`/chat/${chat.id}`}
-              className="flex items-start gap-3 border-b border-border px-4 py-3 hover:bg-secondary transition-colors"
+              className="flex items-start gap-3 border-b border-border px-4 py-3 hover:bg-secondary transition-colors cursor-pointer"
             >
               {/* Avatar */}
               <div className="relative mt-1 flex-shrink-0">
