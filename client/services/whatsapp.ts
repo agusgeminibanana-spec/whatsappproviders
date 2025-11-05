@@ -1,11 +1,13 @@
 /**
  * Servicio para interactuar con la API de WhatsApp (Baileys)
- * 
+ *
  * Uso:
  *   import { whatsappService } from '@/services/whatsapp';
- *   
+ *
  *   const result = await whatsappService.sendMessage('5491234567890', 'Hola!');
  */
+
+import * as React from 'react';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api/whatsapp';
 
