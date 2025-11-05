@@ -13,7 +13,7 @@ export default function Login() {
     // Simulate Google login
     setTimeout(() => {
       localStorage.setItem('isLoggedIn', 'true');
-      navigate('/chats');
+      navigate('/qr');
     }, 1000);
   };
 
@@ -24,7 +24,7 @@ export default function Login() {
       // Simulate email login
       setTimeout(() => {
         localStorage.setItem('isLoggedIn', 'true');
-        navigate('/chats');
+        navigate('/qr');
       }, 1000);
     }
   };
