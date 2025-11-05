@@ -50,6 +50,8 @@ const App = () => {
             <Route path="/qr" element={<QRRoute><QRConnect /></QRRoute>} />
             <Route path="/chats" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/chat/:id" element={<ProtectedRoute><ChatDetail /></ProtectedRoute>} />
+            <Route path="/crm" element={<ProtectedRoute><CRMDashboard /></ProtectedRoute>} />
+            <Route path="/crm/:id" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
