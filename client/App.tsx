@@ -15,9 +15,15 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const QRRoute = ({ children }: { children: React.ReactNode }) => {
+  const isLoggedIn = localStorage.getItem('isLoggedIn');
+  return isLoggedIn ? children : <Navigate to="/" />;
+};
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isLoggedIn = localStorage.getItem('isLoggedIn');
-  return isLoggedIn ? <AppLayout>{children}</AppLayout> : <Navigate to="/" />;
+  const qrConnected = localStorage.getItem('qrConnected');
+  return isLoggedIn && qrConnected ? <AppLayout>{children}</AppLayout> : isLoggedIn ? <Navigate to="/qr" /> : <Navigate to="/" />;
 };
 
 const App = () => {
@@ -39,6 +45,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
+            <Route path="/qr" element={<QRRoute><QRConnect /></QRRoute>} />
             <Route path="/chats" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/chat/:id" element={<ProtectedRoute><ChatDetail /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
