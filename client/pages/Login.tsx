@@ -174,7 +174,7 @@ export default function Login() {
             <button
               onClick={() => {
                 localStorage.setItem('isLoggedIn', 'true');
-                navigate('/chats');
+                navigate('/qr');
               }}
               className="font-medium text-primary hover:underline"
             >
