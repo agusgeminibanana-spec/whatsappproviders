@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import AppLayout from "./components/AppLayout";
 import Login from "./pages/Login";
+import QRConnect from "./pages/QRConnect";
 import Index from "./pages/Index";
 import ChatDetail from "./pages/ChatDetail";
 import NotFound from "./pages/NotFound";
