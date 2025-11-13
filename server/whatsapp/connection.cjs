@@ -9,11 +9,8 @@
  *   Este módulo es cargado automáticamente por server/whatsapp/index.js
  */
 
-require('dotenv').config({ path: '.env.local' });
-
 const fs = require('fs');
 const path = require('path');
-const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const { Boom } = require('@hapi/boom');
 const {
@@ -23,6 +20,7 @@ const {
 } = require('@whiskeysockets/baileys');
 
 let whatsappSocket = null;
+let qrCode = null;
 const sessionName = process.env.WHATSAPP_SESSION || 'fusion-app';
 const authFolder = path.join(__dirname, '../../auth', sessionName);
 
@@ -50,12 +48,7 @@ async function initializeWhatsApp() {
     whatsappSocket.ev.on('connection.update', (update) => {
       const { connection, lastDisconnect, qr } = update;
 
-      // Mostrar QR en consola
-      if (qr) {
-        console.clear();
-        console.log(`\n[WhatsApp ${sessionName}] Escanea este código QR:\n`);
-        qrcode.generate(qr, { small: true });
-      }
+      qrCode = qr;
 
       // Manejo de desconexión
       if (connection === 'close') {
@@ -111,6 +104,13 @@ function getSocket() {
 }
 
 /**
+ * Obtener QR
+ */
+function getQrCode() {
+  return qrCode;
+}
+
+/**
  * Verificar si está conectado
  */
 function isConnected() {
@@ -131,6 +131,7 @@ async function closeConnection() {
 module.exports = {
   initializeWhatsApp,
   getSocket,
+  getQrCode,
   isConnected,
   closeConnection
 };

@@ -1,7 +1,10 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+
+dotenv.config({ path: ".env.local" });
 import { handleDemo } from "./routes/demo";
+import { handleQrCode } from "./routes/whatsapp";
 
 export function createServer() {
   const app = express();
@@ -18,6 +21,7 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+  app.get("/api/whatsapp/qr", handleQrCode);
 
   return app;
 }

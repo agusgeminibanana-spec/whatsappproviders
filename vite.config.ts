@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    exclude: ["server/**"],
   },
   plugins: [react(), expressPlugin()],
   resolve: {
@@ -28,7 +29,7 @@ export default defineConfig(({ mode }) => ({
 function expressPlugin(): Plugin {
   return {
     name: "express-plugin",
-    apply: "serve", // Only apply during development (serve mode)
+    apply: (config, { mode }) => mode === 'development',
     configureServer(server) {
       const app = createServer();
 
