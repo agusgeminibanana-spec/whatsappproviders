@@ -1,31 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, CheckCircle, Smartphone } from 'lucide-react';
+import QRCode from 'qrcode';
 
 export default function QRConnect() {
   const navigate = useNavigate();
-  const [scanned, setScanned] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Simulate QR code scanning
-  const handleSimulateScanning = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setScanned(true);
-      setTimeout(() => {
-        localStorage.setItem('qrConnected', 'true');
-        navigate('/chats');
-      }, 1500);
-    }, 2000);
-  };
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    // Auto-dismiss the hint after 5 seconds
-    const timer = setTimeout(() => {
-      // Could add analytics here
-    }, 5000);
-    return () => clearTimeout(timer);
+    const fetchQrCode = async () => {
+      try {
+        const response = await fetch('/api/whatsapp/qr');
+        const data = await response.json();
+        if (data.qr) {
+          setQrCode(data.qr);
+        }
+        setIsConnected(data.connected);
+      } catch (error) {
+        console.error('Error fetching QR code:', error);
+      }
+    };
+
+    const interval = setInterval(() => {
+      fetchQrCode();
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (qrCode && canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, qrCode, { width: 220, margin: 1 });
+    }
+  }, [qrCode]);
+
+  useEffect(() => {
+    if (isConnected) {
+      setTimeout(() => {
+        navigate('/chats');
+      }, 1500);
+    }
+  }, [isConnected, navigate]);
 
   return (
     <div className="flex h-screen w-full bg-gradient-to-br from-background via-background to-primary/10">
@@ -100,55 +117,19 @@ export default function QRConnect() {
 
           {/* QR Code Container */}
           <div className="mb-8 flex flex-col items-center">
-            {!scanned ? (
+            {!isConnected ? (
               <div className="relative">
                 {/* QR Code Background */}
                 <div className="w-64 h-64 bg-white rounded-2xl shadow-2xl p-4 flex items-center justify-center">
-                  {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-2xl backdrop-blur-sm">
-                      <div className="flex flex-col items-center">
-                        <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
-                        <p className="text-sm text-foreground font-medium">Connecting...</p>
-                      </div>
+                  {qrCode ? (
+                    <canvas ref={canvasRef} />
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
+                      <p className="text-sm text-foreground font-medium">Generating QR Code...</p>
                     </div>
                   )}
-                  {/* Simulated QR Code Pattern */}
-                  <svg
-                    width="220"
-                    height="220"
-                    viewBox="0 0 220 220"
-                    fill="none"
-                    className="text-gray-900"
-                  >
-                    {/* QR Code Pattern */}
-                    <rect width="220" height="220" fill="white" />
-                    {/* Finder patterns */}
-                    <rect x="10" y="10" width="50" height="50" fill="black" />
-                    <rect x="14" y="14" width="42" height="42" fill="white" />
-                    <rect x="18" y="18" width="34" height="34" fill="black" />
-
-                    <rect x="160" y="10" width="50" height="50" fill="black" />
-                    <rect x="164" y="14" width="42" height="42" fill="white" />
-                    <rect x="168" y="18" width="34" height="34" fill="black" />
-
-                    <rect x="10" y="160" width="50" height="50" fill="black" />
-                    <rect x="14" y="164" width="42" height="42" fill="white" />
-                    <rect x="18" y="168" width="34" height="34" fill="black" />
-
-                    {/* Timing patterns */}
-                    <line x1="60" y1="6" x2="160" y2="6" stroke="black" strokeWidth="6" />
-                    <line x1="6" y1="60" x2="6" y2="160" stroke="black" strokeWidth="6" />
-
-                    {/* Data pattern (random-like) */}
-                    <rect x="70" y="70" width="80" height="80" fill="black" opacity="0.5" />
-                    <circle cx="110" cy="110" r="8" fill="black" />
-                  </svg>
                 </div>
-
-                {/* Scanning Indicator */}
-                {loading && (
-                  <div className="absolute inset-0 w-64 h-64 rounded-2xl border-2 border-primary animate-pulse" />
-                )}
               </div>
             ) : (
               <div className="w-64 h-64 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl shadow-2xl flex items-center justify-center border border-primary/30">
@@ -159,50 +140,6 @@ export default function QRConnect() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Scan Button */}
-          {!scanned && (
-            <button
-              onClick={handleSimulateScanning}
-              disabled={loading}
-              className="w-full mb-4 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? 'Scanning...' : 'Simulate Scanning QR Code'}
-            </button>
-          )}
-
-          {/* Alternative Method */}
-          {!scanned && (
-            <>
-              <div className="relative mb-4 flex items-center gap-4">
-                <div className="flex-1 border-t border-border" />
-                <span className="text-xs text-muted-foreground">OR</span>
-                <div className="flex-1 border-t border-border" />
-              </div>
-
-              <button className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 font-medium text-foreground transition-colors hover:bg-secondary mb-6">
-                <Smartphone className="h-5 w-5" />
-                Use Phone Number Instead
-              </button>
-            </>
-          )}
-
-          {/* Footer Info */}
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">
-              Make sure your phone has WhatsApp installed and is connected to the internet
-            </p>
-          </div>
-
-          {/* Help Link */}
-          <div className="mt-8 border-t border-border pt-6 text-center">
-            <p className="text-xs text-muted-foreground">
-              Need help?{' '}
-              <button className="font-medium text-primary hover:underline">
-                View troubleshooting guide
-              </button>
-            </p>
           </div>
         </div>
       </div>
