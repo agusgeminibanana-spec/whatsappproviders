@@ -1,5 +1,7 @@
 # 🚀 Guía Rápida - Integración WhatsApp con Baileys
 
+> **Nota Importante:** Este proyecto ha sido actualizado para funcionar con una API real que muestra un código QR funcional. Las instrucciones a continuación son la forma correcta de iniciar el proyecto en un entorno de desarrollo local.
+
 ## ⚡ Inicio Rápido (5 minutos)
 
 ### 1. **Instalar Dependencias**
