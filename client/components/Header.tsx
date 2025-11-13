@@ -1,3 +1,4 @@
+
 import {
   MoreVertical,
   Camera,
@@ -8,16 +9,31 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { auth, db } from "../firebase";
+import { signOut } from "firebase/auth";
+import { doc, deleteDoc } from "firebase/firestore";
 
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("qrConnected");
-    navigate("/");
+  const handleGoogleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out from Google:", error);
+    }
+  };
+
+  const handleWhatsAppLogout = async () => {
+    try {
+      await deleteDoc(doc(db, "qrcodes", "whatsapp-link"));
+      navigate("/qr-connect");
+    } catch (error) {
+      console.error("Error disconnecting from WhatsApp:", error);
+    }
   };
 
   const isChatsRoute =
@@ -50,13 +66,20 @@ export default function Header() {
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-12 w-40 rounded-lg border border-border bg-card shadow-lg z-50">
+              <div className="absolute right-0 top-12 w-56 rounded-lg border border-border bg-card shadow-lg z-50 py-1">
                 <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-secondary rounded-lg transition-colors"
+                  onClick={handleGoogleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
-                  Logout
+                  Logout from Google
+                </button>
+                <button
+                  onClick={handleWhatsAppLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Disconnect WhatsApp
                 </button>
               </div>
             )}

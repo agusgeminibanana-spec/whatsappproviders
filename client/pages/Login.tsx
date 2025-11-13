@@ -1,31 +1,23 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Mail, Lock } from "lucide-react";
+import { MessageCircle } from "lucide-react";
+import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
+import { auth } from "../firebase";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    // Simulate Google login
-    setTimeout(() => {
-      localStorage.setItem("isLoggedIn", "true");
-      navigate("/qr");
-    }, 1000);
-  };
-
-  const handleEmailLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email && password) {
-      setLoading(true);
-      // Simulate email login
-      setTimeout(() => {
-        localStorage.setItem("isLoggedIn", "true");
-        navigate("/qr");
-      }, 1000);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithRedirect(auth, provider);
+      // The onAuthStateChanged listener in App.tsx will handle the redirect.
+    } catch (error) { 
+      console.error("Error during Google sign-in:", error);
+      setLoading(false);
     }
   };
 
@@ -67,19 +59,6 @@ export default function Login() {
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-              <MessageCircle className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">
-                Free and Available
-              </p>
-              <p className="text-sm text-muted-foreground">
-                No charges for messaging
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -96,10 +75,10 @@ export default function Login() {
 
           <div className="mb-8 text-center">
             <h2 className="mb-2 text-2xl font-bold text-foreground">
-              Welcome Back
+              Sign In
             </h2>
             <p className="text-muted-foreground">
-              Sign in to your account to continue
+              Use your Google account to get started
             </p>
           </div>
 
@@ -127,82 +106,9 @@ export default function Login() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {loading ? "Signing in..." : "Sign in with Google"}
+            {loading ? "Redirecting..." : "Sign in with Google"}
           </button>
-
-          {/* Divider */}
-          <div className="mb-6 flex items-center gap-4">
-            <div className="flex-1 border-t border-border" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <div className="flex-1 border-t border-border" />
-          </div>
-
-          {/* Email/Password Form */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-foreground mb-2"
-              >
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-foreground mb-2"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!email || !password || loading}
-              className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
-
-          {/* Sign Up Link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <button
-              onClick={() => {
-                localStorage.setItem("isLoggedIn", "true");
-                navigate("/qr");
-              }}
-              className="font-medium text-primary hover:underline"
-            >
-              Create one
-            </button>
-          </p>
-
-          {/* Footer */}
+          
           <div className="mt-8 border-t border-border pt-6 text-center text-xs text-muted-foreground">
             <p>By signing in, you agree to our Terms of Service</p>
           </div>
