@@ -1,124 +1,92 @@
-import fs from "fs";
-import path from "path";
-import pino from "pino";
-import { Boom } from "@hapi/boom";
-import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  WASocket,
-} from "@whiskeysockets/baileys";
-import { db } from "../firebase";
 
-let whatsappSocket: WASocket | null = null;
+import makeWASocket, {
+  DisconnectReason,
+  useMultiFileAuthState,
+  makeCacheableSignalKeyStore,
+} from "@airgram/baileys";
+import { Boom } from "@hapi/boom";
+import { db } from "../firebase";
+import pino from "pino";
+
+// Logger configuration
+const logger = pino({ level: "info" });
+
+// Session and database configuration
 const sessionName = process.env.WHATSAPP_SESSION || "fusion-app";
-const authFolder = path.join(__dirname, "../../auth", sessionName);
+const sessionRef = db.collection("whatsapp_sessions").doc(sessionName);
+const qrRef = db.collection("qrcodes").doc("whatsapp-link");
+
+let socket: ReturnType<typeof makeWASocket> | undefined;
 
 /**
- * Initialize WhatsApp connection
+ * Cleans up all session data from Firebase, forcing a new QR scan.
  */
-export async function initializeWhatsApp() {
-  try {
-    // Create credentials folder if it doesn't exist
-    if (!fs.existsSync(authFolder)) {
-      fs.mkdirSync(authFolder, { recursive: true });
+const cleanupFirebaseSession = async () => {
+  console.log("Cleaning up Firebase session data...");
+  const batch = db.batch();
+  batch.delete(sessionRef);
+  // **CRITICAL FIX**: Create the QR doc to signal logout to the frontend.
+  // The frontend considers the session ended only when this doc EXISTS.
+  batch.set(qrRef, { expired: true, timestamp: new Date() });
+  await batch.commit();
+  console.log("Firebase session data cleaned up. QR document created to force re-scan.");
+};
+
+/**
+ * Initializes and connects the WhatsApp socket.
+ */
+export async function connectToWhatsApp() {
+  const { state, saveCreds } = await useMultiFileAuthState(`auth/baileys/${sessionName}`);
+
+  socket = makeWASocket({
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, logger),
+    },
+    printQRInTerminal: true,
+    logger,
+    browser: ["Fusiona CRM", "Desktop", "4.0"],
+  });
+
+  socket.ev.on("creds.update", saveCreds);
+
+  socket.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
+      console.log("QR code generated. Saving to Firestore.");
+      // When a new QR is available, ensure it is written to Firestore.
+      await qrRef.set({ qr, connected: false, timestamp: new Date() });
     }
 
-    // Handle credentials
-    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+    if (connection === "open") {
+      console.log("WhatsApp connection opened.");
+      // Session is active, so the QR document must be deleted.
+      await qrRef.delete(); 
+      await sessionRef.set({ connected: true, timestamp: new Date() });
+    }
 
-    // Create socket
-    whatsappSocket = makeWASocket({
-      auth: state,
-      logger: pino({ level: "error" }),
-      printQRInTerminal: false,
-    });
+    if (connection === "close") {
+      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+      console.error("Connection closed. Reason:", statusCode, lastDisconnect?.error);
 
-    // Connection update listener
-    whatsappSocket.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-      const sessionRef = db.collection("whatsapp_sessions").doc(sessionName);
-
-      if (qr) {
-        await sessionRef.set({ qr, connected: false, updatedAt: new Date() });
+      // This is the definitive logout signal.
+      if (statusCode === DisconnectReason.loggedOut) {
+        console.log("Logged out from WhatsApp. Cleaning up session...");
+        await cleanupFirebaseSession();
+        // Optional: you might want to stop the process or prevent reconnection here.
+      } else {
+        // For any other disconnection reason, attempt to reconnect.
+        console.log("Reconnecting...");
+        connectToWhatsApp();
       }
+    }
+  });
 
-      // Handle disconnection
-      if (connection === "close") {
-        const isBoom = lastDisconnect?.error instanceof Boom;
-        const reasonCode = isBoom
-          ? (lastDisconnect.error as Boom).output?.statusCode
-          : 0;
-        const shouldReconnect = reasonCode !== DisconnectReason.loggedOut;
-
-        await sessionRef.update({ connected: false, updatedAt: new Date() });
-        console.error(
-          `[WARN] Connection closed (session: ${sessionName}). Reconnecting: ${shouldReconnect}`,
-        );
-
-        if (shouldReconnect) {
-          setTimeout(() => initializeWhatsApp(), 5000);
-        } else {
-          console.log(
-            `[INFO] Session closed permanently. Delete /auth/${sessionName} to restart.`,
-          );
-          whatsappSocket = null;
-        }
-      } else if (connection === "open") {
-        await sessionRef.set({
-          connected: true,
-          qr: null,
-          updatedAt: new Date(),
-        });
-        console.log(`\n[OK] WhatsApp session "${sessionName}" connected.`);
-      }
-    });
-
-    // Save credentials when they change
-    whatsappSocket.ev.on("creds.update", saveCreds);
-
-    // Incoming messages listener
-    whatsappSocket.ev.on("messages.upsert", async ({ messages, type }) => {
-      for (const msg of messages) {
-        console.log(`[MESSAGE] From: ${msg.key.remoteJid}, Type: ${type}`);
-      }
-    });
-
-    return whatsappSocket;
-  } catch (error) {
-    console.error(
-      `[ERROR] Failed to initialize WhatsApp "${sessionName}":`,
-      error,
-    );
-    throw error;
-  }
+  return socket;
 }
 
 /**
- * Get current socket
+ * Retrieves the current WhatsApp socket instance.
  */
-export function getSocket() {
-  if (!whatsappSocket) {
-    throw new Error(
-      "WhatsApp socket not initialized. Run initializeWhatsApp first.",
-    );
-  }
-  return whatsappSocket;
-}
-
-/**
- * Check if connected
- */
-export function isConnected() {
-  return whatsappSocket?.socket?.readyState === 1;
-}
-
-/**
- * Close connection
- */
-export async function closeConnection() {
-  if (whatsappSocket) {
-    await whatsappSocket.end(undefined);
-    whatsappSocket = null;
-    console.log(`[INFO] WhatsApp connection "${sessionName}" closed.`);
-  }
-}
+export const getSocket = () => socket;
