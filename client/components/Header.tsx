@@ -1,6 +1,13 @@
-import { MoreVertical, Camera, MessageCircle, Search, LogOut, BarChart3 } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  MoreVertical,
+  Camera,
+  MessageCircle,
+  Search,
+  LogOut,
+  BarChart3,
+} from "lucide-react";
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -8,13 +15,14 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('qrConnected');
-    navigate('/');
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("qrConnected");
+    navigate("/");
   };
 
-  const isChatsRoute = location.pathname.startsWith('/chat') || location.pathname === '/chats';
-  const isCRMRoute = location.pathname.startsWith('/crm');
+  const isChatsRoute =
+    location.pathname.startsWith("/chat") || location.pathname === "/chats";
+  const isCRMRoute = location.pathname.startsWith("/crm");
 
   return (
     <header className="border-b border-border bg-background">
@@ -58,22 +66,22 @@ export default function Header() {
         {/* Navigation Tabs */}
         <div className="flex gap-4 border-t border-border pt-3">
           <button
-            onClick={() => navigate('/chats')}
+            onClick={() => navigate("/chats")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
               isChatsRoute
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <MessageCircle className="h-4 w-4" />
             Messages
           </button>
           <button
-            onClick={() => navigate('/crm')}
+            onClick={() => navigate("/crm")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
               isCRMRoute
-                ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <BarChart3 className="h-4 w-4" />

@@ -1,13 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Video, MoreVertical, Send, Paperclip, Smile } from 'lucide-react';
+import { useState, useRef, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Phone,
+  Video,
+  MoreVertical,
+  Send,
+  Paperclip,
+  Smile,
+} from "lucide-react";
 
 interface Message {
   id: string;
   text: string;
-  sender: 'user' | 'contact';
+  sender: "user" | "contact";
   timestamp: string;
-  status?: 'sent' | 'delivered' | 'read';
+  status?: "sent" | "delivered" | "read";
 }
 
 interface ChatContact {
@@ -22,77 +30,77 @@ export default function ChatDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [messageInput, setMessageInput] = useState('');
+  const [messageInput, setMessageInput] = useState("");
 
   const [contact] = useState<ChatContact>({
-    id: id || '1',
-    name: 'Sarah Johnson',
-    avatar: 'SJ',
+    id: id || "1",
+    name: "Sarah Johnson",
+    avatar: "SJ",
     online: true,
-    lastSeen: 'Active now',
+    lastSeen: "Active now",
   });
 
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
-      text: 'Hey! How are you doing?',
-      sender: 'contact',
-      timestamp: '10:30 AM',
-      status: 'read',
+      id: "1",
+      text: "Hey! How are you doing?",
+      sender: "contact",
+      timestamp: "10:30 AM",
+      status: "read",
     },
     {
-      id: '2',
-      text: 'I\'m doing great! Just finished that project we discussed',
-      sender: 'user',
-      timestamp: '10:32 AM',
-      status: 'read',
+      id: "2",
+      text: "I'm doing great! Just finished that project we discussed",
+      sender: "user",
+      timestamp: "10:32 AM",
+      status: "read",
     },
     {
-      id: '3',
-      text: 'That\'s awesome! I\'d love to see what you\'ve done',
-      sender: 'contact',
-      timestamp: '10:33 AM',
-      status: 'read',
+      id: "3",
+      text: "That's awesome! I'd love to see what you've done",
+      sender: "contact",
+      timestamp: "10:33 AM",
+      status: "read",
     },
     {
-      id: '4',
-      text: 'I\'ll send you the files later today',
-      sender: 'user',
-      timestamp: '10:34 AM',
-      status: 'delivered',
+      id: "4",
+      text: "I'll send you the files later today",
+      sender: "user",
+      timestamp: "10:34 AM",
+      status: "delivered",
     },
     {
-      id: '5',
-      text: 'Perfect! 😊',
-      sender: 'contact',
-      timestamp: '10:35 AM',
-      status: 'read',
+      id: "5",
+      text: "Perfect! 😊",
+      sender: "contact",
+      timestamp: "10:35 AM",
+      status: "read",
     },
     {
-      id: '6',
-      text: 'By the way, are we still on for tomorrow?',
-      sender: 'contact',
-      timestamp: '10:36 AM',
-      status: 'read',
+      id: "6",
+      text: "By the way, are we still on for tomorrow?",
+      sender: "contact",
+      timestamp: "10:36 AM",
+      status: "read",
     },
     {
-      id: '7',
-      text: 'Yes, definitely! Looking forward to it',
-      sender: 'user',
-      timestamp: '10:37 AM',
-      status: 'read',
+      id: "7",
+      text: "Yes, definitely! Looking forward to it",
+      sender: "user",
+      timestamp: "10:37 AM",
+      status: "read",
     },
     {
-      id: '8',
-      text: 'Sounds great! See you tomorrow',
-      sender: 'contact',
-      timestamp: '2:45 PM',
-      status: 'read',
+      id: "8",
+      text: "Sounds great! See you tomorrow",
+      sender: "contact",
+      timestamp: "2:45 PM",
+      status: "read",
     },
   ]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -106,26 +114,26 @@ export default function ChatDetail() {
     const newMessage: Message = {
       id: String(messages.length + 1),
       text: messageInput,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
+      sender: "user",
+      timestamp: new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
         hour12: true,
       }),
-      status: 'sent',
+      status: "sent",
     };
 
     setMessages([...messages, newMessage]);
-    setMessageInput('');
+    setMessageInput("");
 
     // Simulate a response after 1 second
     setTimeout(() => {
       const responses = [
-        'That sounds good!',
-        'I agree! 👍',
-        'Let\'s do it!',
-        'Sounds perfect!',
-        'I\'ll let you know!',
+        "That sounds good!",
+        "I agree! 👍",
+        "Let's do it!",
+        "Sounds perfect!",
+        "I'll let you know!",
       ];
       const randomResponse =
         responses[Math.floor(Math.random() * responses.length)];
@@ -135,13 +143,13 @@ export default function ChatDetail() {
         {
           id: String(prev.length + 1),
           text: randomResponse,
-          sender: 'contact',
-          timestamp: new Date().toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
+          sender: "contact",
+          timestamp: new Date().toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
             hour12: true,
           }),
-          status: 'delivered',
+          status: "delivered",
         },
       ]);
     }, 1000);
@@ -154,7 +162,7 @@ export default function ChatDetail() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/chats')}
+              onClick={() => navigate("/chats")}
               className="p-2 hover:bg-secondary rounded-full transition-colors sm:hidden"
             >
               <ArrowLeft className="h-5 w-5 text-foreground" />
@@ -170,7 +178,7 @@ export default function ChatDetail() {
             <div className="min-w-0">
               <h2 className="font-semibold text-foreground">{contact.name}</h2>
               <p className="text-xs text-muted-foreground">
-                {contact.online ? 'Active now' : contact.lastSeen}
+                {contact.online ? "Active now" : contact.lastSeen}
               </p>
             </div>
           </div>
@@ -195,32 +203,32 @@ export default function ChatDetail() {
           <div
             key={message.id}
             className={`flex ${
-              message.sender === 'user' ? 'justify-end' : 'justify-start'
+              message.sender === "user" ? "justify-end" : "justify-start"
             }`}
           >
             <div
               className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2 ${
-                message.sender === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-none'
-                  : 'bg-card text-card-foreground border border-border rounded-bl-none'
+                message.sender === "user"
+                  ? "bg-primary text-primary-foreground rounded-br-none"
+                  : "bg-card text-card-foreground border border-border rounded-bl-none"
               }`}
             >
               <p className="break-words text-sm">{message.text}</p>
               <div
                 className={`mt-1 flex items-center justify-end gap-1 text-xs ${
-                  message.sender === 'user'
-                    ? 'text-primary-foreground/70'
-                    : 'text-muted-foreground'
+                  message.sender === "user"
+                    ? "text-primary-foreground/70"
+                    : "text-muted-foreground"
                 }`}
               >
                 <span>{message.timestamp}</span>
-                {message.sender === 'user' && (
+                {message.sender === "user" && (
                   <span>
-                    {message.status === 'read'
-                      ? '✓✓'
-                      : message.status === 'delivered'
-                        ? '✓✓'
-                        : '✓'}
+                    {message.status === "read"
+                      ? "✓✓"
+                      : message.status === "delivered"
+                        ? "✓✓"
+                        : "✓"}
                   </span>
                 )}
               </div>

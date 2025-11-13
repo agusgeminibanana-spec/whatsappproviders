@@ -1,20 +1,25 @@
-{ pkgs, ... }: {
-  # The channel to use.
-  channel = "stable-23.11";
-
-  # The packages to make available in the environment.
+{pkgs}: {
+  channel = "stable-24.05";
   packages = [
     pkgs.nodejs_20
   ];
-
-  # IDX-specific configuration.
+  idx.extensions = [
+    "svelte.svelte-vscode"
+    "vue.volar"
+  ];
   idx.previews = {
-    enable = true;
     previews = {
-      "Web" = {
-        # The command to start the preview.
-        command = [ "npm" "run" "dev" ];
-        # Use the web manager to handle port forwarding.
+      web = {
+        command = [
+          "npm"
+          "run"
+          "dev"
+          "--"
+          "--port"
+          "$PORT"
+          "--host"
+          "0.0.0.0"
+        ];
         manager = "web";
       };
     };

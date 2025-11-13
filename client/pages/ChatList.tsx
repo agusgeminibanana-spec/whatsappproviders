@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Plus, Edit3, MessageCircle } from 'lucide-react';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Search, Plus, Edit3, MessageCircle } from "lucide-react";
 
 interface Chat {
   id: string;
@@ -15,83 +15,83 @@ interface Chat {
 export default function ChatList() {
   const [chats] = useState<Chat[]>([
     {
-      id: '1',
-      name: 'Sarah Johnson',
-      avatar: 'SJ',
-      lastMessage: 'Sounds great! See you tomorrow',
-      timestamp: '2:45 PM',
+      id: "1",
+      name: "Sarah Johnson",
+      avatar: "SJ",
+      lastMessage: "Sounds great! See you tomorrow",
+      timestamp: "2:45 PM",
       unread: 0,
       online: true,
     },
     {
-      id: '2',
-      name: 'Family Group',
-      avatar: 'FG',
-      lastMessage: 'Mom: Did you see the photos from vacation?',
-      timestamp: '1:30 PM',
+      id: "2",
+      name: "Family Group",
+      avatar: "FG",
+      lastMessage: "Mom: Did you see the photos from vacation?",
+      timestamp: "1:30 PM",
       unread: 3,
       online: false,
     },
     {
-      id: '3',
-      name: 'John Smith',
-      avatar: 'JS',
-      lastMessage: 'Thanks for the recommendation!',
-      timestamp: 'Yesterday',
+      id: "3",
+      name: "John Smith",
+      avatar: "JS",
+      lastMessage: "Thanks for the recommendation!",
+      timestamp: "Yesterday",
       unread: 0,
       online: true,
     },
     {
-      id: '4',
-      name: 'Work Team',
-      avatar: 'WT',
-      lastMessage: 'Alex: Project deadline moved to Friday',
-      timestamp: 'Yesterday',
+      id: "4",
+      name: "Work Team",
+      avatar: "WT",
+      lastMessage: "Alex: Project deadline moved to Friday",
+      timestamp: "Yesterday",
       unread: 5,
       online: false,
     },
     {
-      id: '5',
-      name: 'Emma Davis',
-      avatar: 'ED',
-      lastMessage: 'That sounds perfect!',
-      timestamp: 'Monday',
+      id: "5",
+      name: "Emma Davis",
+      avatar: "ED",
+      lastMessage: "That sounds perfect!",
+      timestamp: "Monday",
       unread: 0,
       online: false,
     },
     {
-      id: '6',
-      name: 'Design Team',
-      avatar: 'DT',
-      lastMessage: 'Design files are ready for review',
-      timestamp: 'Monday',
+      id: "6",
+      name: "Design Team",
+      avatar: "DT",
+      lastMessage: "Design files are ready for review",
+      timestamp: "Monday",
       unread: 0,
       online: false,
     },
     {
-      id: '7',
-      name: 'Michael Brown',
-      avatar: 'MB',
-      lastMessage: 'Let\'s catch up soon!',
-      timestamp: 'Sunday',
+      id: "7",
+      name: "Michael Brown",
+      avatar: "MB",
+      lastMessage: "Let's catch up soon!",
+      timestamp: "Sunday",
       unread: 0,
       online: true,
     },
     {
-      id: '8',
-      name: 'Project Group',
-      avatar: 'PG',
-      lastMessage: 'All tasks completed on schedule',
-      timestamp: 'Sunday',
+      id: "8",
+      name: "Project Group",
+      avatar: "PG",
+      lastMessage: "All tasks completed on schedule",
+      timestamp: "Sunday",
       unread: 0,
       online: false,
     },
   ]);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredChats = chats.filter(chat =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredChats = chats.filter((chat) =>
+    chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -149,7 +149,7 @@ export default function ChatList() {
               {chat.unread > 0 && (
                 <div className="ml-2 flex-shrink-0">
                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                    {chat.unread > 9 ? '9+' : chat.unread}
+                    {chat.unread > 9 ? "9+" : chat.unread}
                   </div>
                 </div>
               )}

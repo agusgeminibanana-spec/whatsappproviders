@@ -7,9 +7,10 @@
  *   const result = await whatsappService.sendMessage('5491234567890', 'Hola!');
  */
 
-import * as React from 'react';
+import * as React from "react";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api/whatsapp';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:3000/api/whatsapp";
 
 interface SendMessageParams {
   phone: string;
@@ -48,10 +49,10 @@ interface ApiResponse<T = any> {
 export async function checkWhatsAppStatus(): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/status`);
-    if (!response.ok) throw new Error('Error al verificar estado');
+    if (!response.ok) throw new Error("Error al verificar estado");
     return await response.json();
   } catch (error) {
-    console.error('Error checking WhatsApp status:', error);
+    console.error("Error checking WhatsApp status:", error);
     throw error;
   }
 }
@@ -59,24 +60,26 @@ export async function checkWhatsAppStatus(): Promise<ApiResponse> {
 /**
  * Enviar mensaje de texto
  */
-export async function sendMessage(params: SendMessageParams): Promise<ApiResponse> {
+export async function sendMessage(
+  params: SendMessageParams,
+): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/send-message`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al enviar mensaje');
+      throw new Error(error.error || "Error al enviar mensaje");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error("Error sending message:", error);
     throw error;
   }
 }
@@ -87,26 +90,26 @@ export async function sendMessage(params: SendMessageParams): Promise<ApiRespons
 export async function sendImage(params: SendImageParams): Promise<ApiResponse> {
   try {
     const formData = new FormData();
-    formData.append('phone', params.phone);
-    formData.append('image', params.image);
-    
+    formData.append("phone", params.phone);
+    formData.append("image", params.image);
+
     if (params.caption) {
-      formData.append('caption', params.caption);
+      formData.append("caption", params.caption);
     }
 
     const response = await fetch(`${API_BASE_URL}/send-image`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al enviar imagen');
+      throw new Error(error.error || "Error al enviar imagen");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error sending image:', error);
+    console.error("Error sending image:", error);
     throw error;
   }
 }
@@ -114,24 +117,26 @@ export async function sendImage(params: SendImageParams): Promise<ApiResponse> {
 /**
  * Enviar mensaje con menciones
  */
-export async function sendMention(params: SendMentionParams): Promise<ApiResponse> {
+export async function sendMention(
+  params: SendMentionParams,
+): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/send-mention`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al enviar mención');
+      throw new Error(error.error || "Error al enviar mención");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error sending mention:', error);
+    console.error("Error sending mention:", error);
     throw error;
   }
 }
@@ -139,24 +144,26 @@ export async function sendMention(params: SendMentionParams): Promise<ApiRespons
 /**
  * Crear grupo
  */
-export async function createGroup(params: CreateGroupParams): Promise<ApiResponse> {
+export async function createGroup(
+  params: CreateGroupParams,
+): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/create-group`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al crear grupo');
+      throw new Error(error.error || "Error al crear grupo");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error creating group:', error);
+    console.error("Error creating group:", error);
     throw error;
   }
 }
@@ -166,25 +173,25 @@ export async function createGroup(params: CreateGroupParams): Promise<ApiRespons
  */
 export async function updateGroupSubject(
   groupId: string,
-  subject: string
+  subject: string,
 ): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/update-group-subject`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ groupId, subject }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al actualizar grupo');
+      throw new Error(error.error || "Error al actualizar grupo");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error updating group subject:', error);
+    console.error("Error updating group subject:", error);
     throw error;
   }
 }
@@ -194,25 +201,25 @@ export async function updateGroupSubject(
  */
 export async function updateBlockStatus(
   phone: string,
-  action: 'block' | 'unblock'
+  action: "block" | "unblock",
 ): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/block-contact`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ phone, action }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al actualizar bloqueo');
+      throw new Error(error.error || "Error al actualizar bloqueo");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error updating block status:', error);
+    console.error("Error updating block status:", error);
     throw error;
   }
 }
@@ -222,25 +229,25 @@ export async function updateBlockStatus(
  */
 export async function archiveChat(
   phone: string,
-  archive: boolean = true
+  archive: boolean = true,
 ): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/archive-chat`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ phone, archive }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al archivar chat');
+      throw new Error(error.error || "Error al archivar chat");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error archiving chat:', error);
+    console.error("Error archiving chat:", error);
     throw error;
   }
 }
@@ -250,25 +257,25 @@ export async function archiveChat(
  */
 export async function deleteMessage(
   phone: string,
-  messageId: string
+  messageId: string,
 ): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/delete-message`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ phone, messageId }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al eliminar mensaje');
+      throw new Error(error.error || "Error al eliminar mensaje");
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error deleting message:', error);
+    console.error("Error deleting message:", error);
     throw error;
   }
 }
@@ -282,7 +289,10 @@ export function useWhatsAppApi() {
   const [data, setData] = React.useState<ApiResponse | null>(null);
 
   const execute = React.useCallback(
-    async (apiFunction: (...args: any[]) => Promise<ApiResponse>, ...args: any[]) => {
+    async (
+      apiFunction: (...args: any[]) => Promise<ApiResponse>,
+      ...args: any[]
+    ) => {
       try {
         setLoading(true);
         setError(null);
@@ -297,7 +307,7 @@ export function useWhatsAppApi() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   return { execute, loading, error, data };

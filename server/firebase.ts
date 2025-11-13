@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+import admin from "firebase-admin";
 
 // Initialize Firebase Admin SDK
 // Make sure you have the GOOGLE_APPLICATION_CREDENTIALS environment variable set.
@@ -9,7 +9,7 @@ try {
     });
   }
 } catch (error) {
-  console.error('Firebase Admin initialization error:', error);
+  console.error("Firebase Admin initialization error:", error);
 }
 
 export const db = admin.firestore();

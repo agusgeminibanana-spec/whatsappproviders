@@ -18,14 +18,20 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const QRRoute = ({ children }: { children: React.ReactNode }) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn');
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
   return isLoggedIn ? children : <Navigate to="/" />;
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn');
-  const qrConnected = localStorage.getItem('qrConnected');
-  return isLoggedIn && qrConnected ? <AppLayout>{children}</AppLayout> : isLoggedIn ? <Navigate to="/qr" /> : <Navigate to="/" />;
+  const isLoggedIn = localStorage.getItem("isLoggedIn");
+  const qrConnected = localStorage.getItem("qrConnected");
+  return isLoggedIn && qrConnected ? (
+    <AppLayout>{children}</AppLayout>
+  ) : isLoggedIn ? (
+    <Navigate to="/qr" />
+  ) : (
+    <Navigate to="/" />
+  );
 };
 
 const App = () => {
@@ -47,11 +53,46 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/qr" element={<QRRoute><QRConnect /></QRRoute>} />
-            <Route path="/chats" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/chat/:id" element={<ProtectedRoute><ChatDetail /></ProtectedRoute>} />
-            <Route path="/crm" element={<ProtectedRoute><CRMDashboard /></ProtectedRoute>} />
-            <Route path="/crm/:id" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+            <Route
+              path="/qr"
+              element={
+                <QRRoute>
+                  <QRConnect />
+                </QRRoute>
+              }
+            />
+            <Route
+              path="/chats"
+              element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat/:id"
+              element={
+                <ProtectedRoute>
+                  <ChatDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/crm"
+              element={
+                <ProtectedRoute>
+                  <CRMDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/crm/:id"
+              element={
+                <ProtectedRoute>
+                  <CustomerProfile />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

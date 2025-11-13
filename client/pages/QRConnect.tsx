@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MessageCircle, CheckCircle, Smartphone } from 'lucide-react';
-import QRCode from 'qrcode';
+
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageCircle, CheckCircle } from "lucide-react";
+import QRCode from "qrcode";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase"; // Import the db instance from your firebase config
 
 export default function QRConnect() {
   const navigate = useNavigate();
@@ -10,24 +13,19 @@ export default function QRConnect() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const fetchQrCode = async () => {
-      try {
-        const response = await fetch('/api/whatsapp/qr');
-        const data = await response.json();
-        if (data.qr) {
-          setQrCode(data.qr);
+    const unsub = onSnapshot(doc(db, "qrcodes", "whatsapp-link"), (doc) => {
+        const data = doc.data();
+        if (data && data.qrString) {
+          setQrCode(data.qrString);
+          setIsConnected(false);
+        } else {
+          setQrCode(null);
+          setIsConnected(true);
         }
-        setIsConnected(data.connected);
-      } catch (error) {
-        console.error('Error fetching QR code:', error);
-      }
-    };
+    });
 
-    const interval = setInterval(() => {
-      fetchQrCode();
-    }, 2000);
-
-    return () => clearInterval(interval);
+    // Cleanup subscription on unmount
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -37,12 +35,12 @@ export default function QRConnect() {
   }, [qrCode]);
 
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !qrCode) {
       setTimeout(() => {
-        navigate('/chats');
+        navigate("/chats");
       }, 1500);
     }
-  }, [isConnected, navigate]);
+  }, [isConnected, qrCode, navigate]);
 
   return (
     <div className="flex h-screen w-full bg-gradient-to-br from-background via-background to-primary/10">
@@ -64,8 +62,12 @@ export default function QRConnect() {
               <span className="text-lg font-semibold text-primary">1</span>
             </div>
             <div>
-              <p className="font-semibold text-foreground mb-1">Open WhatsApp on Your Phone</p>
-              <p className="text-sm text-muted-foreground">Make sure your phone is nearby and connected to the internet</p>
+              <p className="font-semibold text-foreground mb-1">
+                Open WhatsApp on Your Phone
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Make sure your phone is nearby and connected to the internet
+              </p>
             </div>
           </div>
 
@@ -74,8 +76,13 @@ export default function QRConnect() {
               <span className="text-lg font-semibold text-primary">2</span>
             </div>
             <div>
-              <p className="font-semibold text-foreground mb-1">Scan the QR Code</p>
-              <p className="text-sm text-muted-foreground">Go to Settings → Linked Devices → Link a Device and scan the QR code</p>
+              <p className="font-semibold text-foreground mb-1">
+                Scan the QR Code
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Go to Settings → Linked Devices → Link a Device and scan the QR
+                code
+              </p>
             </div>
           </div>
 
@@ -84,8 +91,12 @@ export default function QRConnect() {
               <span className="text-lg font-semibold text-primary">3</span>
             </div>
             <div>
-              <p className="font-semibold text-foreground mb-1">You're All Set</p>
-              <p className="text-sm text-muted-foreground">Once scanned, you'll be connected and ready to message</p>
+              <p className="font-semibold text-foreground mb-1">
+                You're All Set
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Once scanned, you'll be connected and ready to message
+              </p>
             </div>
           </div>
         </div>
@@ -93,8 +104,11 @@ export default function QRConnect() {
         {/* Security Notice */}
         <div className="mt-12 p-4 rounded-lg bg-primary/10 border border-primary/20 max-w-sm">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground block mb-1">🔒 Keep Your QR Code Private</span>
-            Never share your QR code with anyone. Anyone with your QR code can access your WhatsApp account.
+            <span className="font-semibold text-foreground block mb-1">
+              🔒 Keep Your QR Code Private
+            </span>
+            Never share your QR code with anyone. Anyone with your QR code can
+            access your WhatsApp account.
           </p>
         </div>
       </div>
@@ -111,8 +125,12 @@ export default function QRConnect() {
           </div>
 
           <div className="mb-8 text-center">
-            <h2 className="mb-2 text-2xl font-bold text-foreground">Scan QR Code</h2>
-            <p className="text-muted-foreground">Use your phone to scan this code to connect</p>
+            <h2 className="mb-2 text-2xl font-bold text-foreground">
+              Scan QR Code
+            </h2>
+            <p className="text-muted-foreground">
+              Use your phone to scan this code to connect
+            </p>
           </div>
 
           {/* QR Code Container */}
@@ -126,7 +144,9 @@ export default function QRConnect() {
                   ) : (
                     <div className="flex flex-col items-center">
                       <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
-                      <p className="text-sm text-foreground font-medium">Generating QR Code...</p>
+                      <p className="text-sm text-foreground font-medium">
+                        Generating QR Code...
+                      </p>
                     </div>
                   )}
                 </div>
@@ -136,7 +156,9 @@ export default function QRConnect() {
                 <div className="text-center">
                   <CheckCircle className="h-20 w-20 text-primary mx-auto mb-4 animate-bounce" />
                   <p className="text-lg font-bold text-primary">Connected!</p>
-                  <p className="text-sm text-muted-foreground mt-2">Redirecting...</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Redirecting...
+                  </p>
                 </div>
               </div>
             )}

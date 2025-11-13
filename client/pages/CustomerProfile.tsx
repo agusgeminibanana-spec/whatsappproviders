@@ -1,98 +1,109 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, MessageSquare, Tag, Edit, Trash2, Plus } from 'lucide-react';
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  MessageSquare,
+  Tag,
+  Edit,
+  Trash2,
+  Plus,
+} from "lucide-react";
 
 interface Interaction {
   id: string;
-  type: 'message' | 'call' | 'email' | 'note';
+  type: "message" | "call" | "email" | "note";
   content: string;
   timestamp: string;
   details?: string;
 }
 
 const contactsData: Record<string, any> = {
-  '1': {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@company.com',
-    phone: '+1 (555) 123-4567',
-    avatar: 'SJ',
-    company: 'Tech Corp',
-    position: 'Sales Director',
-    status: 'active',
-    tags: ['Sales', 'VIP', 'Premium'],
-    address: '123 Tech Avenue, San Francisco, CA 94105',
-    joinDate: '2021-03-15',
-    totalValue: '$125,000',
-    notes: 'Interested in premium plan upgrade. Very responsive client.',
+  "1": {
+    id: "1",
+    name: "Sarah Johnson",
+    email: "sarah.johnson@company.com",
+    phone: "+1 (555) 123-4567",
+    avatar: "SJ",
+    company: "Tech Corp",
+    position: "Sales Director",
+    status: "active",
+    tags: ["Sales", "VIP", "Premium"],
+    address: "123 Tech Avenue, San Francisco, CA 94105",
+    joinDate: "2021-03-15",
+    totalValue: "$125,000",
+    notes: "Interested in premium plan upgrade. Very responsive client.",
     isFavorite: true,
     interactions: [
       {
-        id: '1',
-        type: 'message',
-        content: 'Sounds great! See you tomorrow',
-        timestamp: '2 hours ago',
-        details: 'WhatsApp message received',
+        id: "1",
+        type: "message",
+        content: "Sounds great! See you tomorrow",
+        timestamp: "2 hours ago",
+        details: "WhatsApp message received",
       },
       {
-        id: '2',
-        type: 'call',
-        content: 'Product demo call',
-        timestamp: '1 day ago',
-        details: '45 minutes duration',
+        id: "2",
+        type: "call",
+        content: "Product demo call",
+        timestamp: "1 day ago",
+        details: "45 minutes duration",
       },
       {
-        id: '3',
-        type: 'email',
-        content: 'Sent proposal documents',
-        timestamp: '2 days ago',
-        details: '3 attachments included',
+        id: "3",
+        type: "email",
+        content: "Sent proposal documents",
+        timestamp: "2 days ago",
+        details: "3 attachments included",
       },
       {
-        id: '4',
-        type: 'note',
-        content: 'Client interested in enterprise plan',
-        timestamp: '3 days ago',
-        details: 'Added by: Michael Brown',
+        id: "4",
+        type: "note",
+        content: "Client interested in enterprise plan",
+        timestamp: "3 days ago",
+        details: "Added by: Michael Brown",
       },
       {
-        id: '5',
-        type: 'message',
-        content: 'Can we schedule a meeting?',
-        timestamp: '1 week ago',
-        details: 'WhatsApp message sent',
+        id: "5",
+        type: "message",
+        content: "Can we schedule a meeting?",
+        timestamp: "1 week ago",
+        details: "WhatsApp message sent",
       },
     ],
   },
-  '2': {
-    id: '2',
-    name: 'John Smith',
-    email: 'john.smith@startup.com',
-    phone: '+1 (555) 234-5678',
-    avatar: 'JS',
-    company: 'Startup Inc',
-    position: 'CTO',
-    status: 'active',
-    tags: ['Support', 'Enterprise', 'Technical'],
-    address: '456 Innovation Blvd, Austin, TX 78704',
-    joinDate: '2022-07-20',
-    totalValue: '$75,000',
-    notes: 'Technical contact. Prefers detailed documentation.',
+  "2": {
+    id: "2",
+    name: "John Smith",
+    email: "john.smith@startup.com",
+    phone: "+1 (555) 234-5678",
+    avatar: "JS",
+    company: "Startup Inc",
+    position: "CTO",
+    status: "active",
+    tags: ["Support", "Enterprise", "Technical"],
+    address: "456 Innovation Blvd, Austin, TX 78704",
+    joinDate: "2022-07-20",
+    totalValue: "$75,000",
+    notes: "Technical contact. Prefers detailed documentation.",
     isFavorite: false,
     interactions: [
       {
-        id: '1',
-        type: 'message',
-        content: 'Thanks for the recommendation!',
-        timestamp: '1 day ago',
-        details: 'WhatsApp message received',
+        id: "1",
+        type: "message",
+        content: "Thanks for the recommendation!",
+        timestamp: "1 day ago",
+        details: "WhatsApp message received",
       },
       {
-        id: '2',
-        type: 'email',
-        content: 'Technical specification request',
-        timestamp: '3 days ago',
-        details: 'Sent API documentation',
+        id: "2",
+        type: "email",
+        content: "Technical specification request",
+        timestamp: "3 days ago",
+        details: "Sent API documentation",
       },
     ],
   },
@@ -103,15 +114,17 @@ export default function CustomerProfile() {
   const navigate = useNavigate();
   const contact = id ? contactsData[id] : null;
   const [editingNote, setEditingNote] = useState(false);
-  const [newNote, setNewNote] = useState(contact?.notes || '');
+  const [newNote, setNewNote] = useState(contact?.notes || "");
 
   if (!contact) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-background">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-foreground">Contact not found</h2>
+          <h2 className="text-xl font-bold text-foreground">
+            Contact not found
+          </h2>
           <button
-            onClick={() => navigate('/crm')}
+            onClick={() => navigate("/crm")}
             className="mt-4 text-primary hover:underline"
           >
             Back to CRM
@@ -126,7 +139,7 @@ export default function CustomerProfile() {
       {/* Header */}
       <div className="border-b border-border px-6 py-4">
         <button
-          onClick={() => navigate('/crm')}
+          onClick={() => navigate("/crm")}
           className="mb-4 flex items-center gap-2 text-primary hover:underline transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -138,8 +151,12 @@ export default function CustomerProfile() {
               {contact.avatar}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{contact.name}</h1>
-              <p className="text-sm text-muted-foreground">{contact.position} at {contact.company}</p>
+              <h1 className="text-2xl font-bold text-foreground">
+                {contact.name}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {contact.position} at {contact.company}
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {contact.tags.map((tag: string) => (
                   <span
@@ -163,7 +180,9 @@ export default function CustomerProfile() {
           <div className="lg:col-span-2 space-y-6">
             {/* Contact Details */}
             <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 text-lg font-semibold text-foreground">Contact Details</h2>
+              <h2 className="mb-4 text-lg font-semibold text-foreground">
+                Contact Details
+              </h2>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-muted-foreground" />
@@ -191,23 +210,35 @@ export default function CustomerProfile() {
 
             {/* Business Info */}
             <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="mb-4 text-lg font-semibold text-foreground">Business Information</h2>
+              <h2 className="mb-4 text-lg font-semibold text-foreground">
+                Business Information
+              </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Company</p>
-                  <p className="font-semibold text-foreground">{contact.company}</p>
+                  <p className="font-semibold text-foreground">
+                    {contact.company}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Position</p>
-                  <p className="font-semibold text-foreground">{contact.position}</p>
+                  <p className="font-semibold text-foreground">
+                    {contact.position}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
-                  <p className="font-semibold text-foreground capitalize">{contact.status}</p>
+                  <p className="font-semibold text-foreground capitalize">
+                    {contact.status}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Total Value</p>
-                  <p className="font-semibold text-foreground">{contact.totalValue}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Total Value
+                  </p>
+                  <p className="font-semibold text-foreground">
+                    {contact.totalValue}
+                  </p>
                 </div>
               </div>
             </div>
@@ -254,7 +285,9 @@ export default function CustomerProfile() {
             {/* Interaction Timeline */}
             <div className="rounded-lg border border-border bg-card p-6">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Interaction History</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Interaction History
+                </h2>
                 <button className="flex items-center gap-2 rounded-lg border border-border px-3 py-1 text-sm text-foreground hover:bg-secondary transition-colors">
                   <Plus className="h-4 w-4" />
                   Add
@@ -262,29 +295,40 @@ export default function CustomerProfile() {
               </div>
               <div className="space-y-4">
                 {contact.interactions.map((interaction: Interaction) => (
-                  <div key={interaction.id} className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
+                  <div
+                    key={interaction.id}
+                    className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0"
+                  >
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary">
-                      {interaction.type === 'message' && (
+                      {interaction.type === "message" && (
                         <MessageSquare className="h-5 w-5 text-muted-foreground" />
                       )}
-                      {interaction.type === 'call' && (
+                      {interaction.type === "call" && (
                         <Phone className="h-5 w-5 text-muted-foreground" />
                       )}
-                      {interaction.type === 'email' && (
+                      {interaction.type === "email" && (
                         <Mail className="h-5 w-5 text-muted-foreground" />
                       )}
-                      {interaction.type === 'note' && (
+                      {interaction.type === "note" && (
                         <MessageSquare className="h-5 w-5 text-muted-foreground" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-1">
-                        <p className="font-semibold text-foreground capitalize">{interaction.type}</p>
-                        <p className="text-xs text-muted-foreground">{interaction.timestamp}</p>
+                        <p className="font-semibold text-foreground capitalize">
+                          {interaction.type}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {interaction.timestamp}
+                        </p>
                       </div>
-                      <p className="text-sm text-foreground mb-1">{interaction.content}</p>
+                      <p className="text-sm text-foreground mb-1">
+                        {interaction.content}
+                      </p>
                       {interaction.details && (
-                        <p className="text-xs text-muted-foreground">{interaction.details}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {interaction.details}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -297,19 +341,33 @@ export default function CustomerProfile() {
           <div className="space-y-6">
             {/* Quick Stats */}
             <div className="rounded-lg border border-border bg-card p-6">
-              <h3 className="mb-4 font-semibold text-foreground">Quick Stats</h3>
+              <h3 className="mb-4 font-semibold text-foreground">
+                Quick Stats
+              </h3>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Member Since</p>
-                  <p className="font-semibold text-foreground">{contact.joinDate}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Member Since
+                  </p>
+                  <p className="font-semibold text-foreground">
+                    {contact.joinDate}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Total Interactions</p>
-                  <p className="font-semibold text-foreground">{contact.interactions.length}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Total Interactions
+                  </p>
+                  <p className="font-semibold text-foreground">
+                    {contact.interactions.length}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Account Value</p>
-                  <p className="font-semibold text-foreground">{contact.totalValue}</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Account Value
+                  </p>
+                  <p className="font-semibold text-foreground">
+                    {contact.totalValue}
+                  </p>
                 </div>
               </div>
             </div>

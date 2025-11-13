@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => ({
 function expressPlugin(): Plugin {
   return {
     name: "express-plugin",
-    apply: (config, { mode }) => mode === 'development',
+    apply: (config, { mode }) => mode === "development",
     configureServer(server) {
       const app = createServer();
 
