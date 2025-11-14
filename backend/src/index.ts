@@ -1,7 +1,6 @@
 
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { initializeFirebase } from './config/firebase';
 import { whatsAppService } from './api/services/whatsapp.service';
@@ -12,27 +11,20 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
-// In development, we need CORS to allow requests from the Vite dev server (on port 9003)
 if (process.env.NODE_ENV !== 'production') {
   console.log('Development mode: Enabling CORS for localhost:9003');
   app.use(cors({ origin: 'http://localhost:9003' }));
 }
 
-// Initialize Firebase
 initializeFirebase();
 
-// Initialize WhatsApp Service to generate the QR code
 whatsAppService.init().catch(err => console.error('Error initializing WhatsApp Service:', err));
 
-// API routes are used in both dev and prod
 app.use('/api', apiRoutes);
 
-// --- Static file serving for PRODUCTION ONLY ---
 if (process.env.NODE_ENV === 'production') {
     console.log('Production mode: Setting up static file serving.');
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    
+    // The __dirname is available in CommonJS. It's the directory of the current file.
     const clientBuildPath = path.join(__dirname, '../spa');
     
     console.log(`Serving static files from: ${clientBuildPath}`);
@@ -42,7 +34,6 @@ if (process.env.NODE_ENV === 'production') {
       res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
 } else {
-    // Simple root route for development to confirm the server is running
     app.get('/', (req, res) => {
         res.send('Backend server is running in development mode.');
     });
