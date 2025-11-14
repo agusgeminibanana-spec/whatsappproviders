@@ -25,3 +25,12 @@ dist-ssr
 
 .config/
 !.env
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.idea/
+flutter_app/windows/
+flutter_app/linux/
+flutter_app/macos/
+flutter_app/ios/
+flutter_app/web/
+flutter_app/android/
