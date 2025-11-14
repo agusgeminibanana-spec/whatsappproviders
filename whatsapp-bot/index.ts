@@ -1,4 +1,4 @@
-import partenza, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import partenza, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import admin from 'firebase-admin';
 
@@ -12,8 +12,13 @@ const db = admin.firestore();
 
 const main = async () => {
     const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
+    // fetch latest version of WA Web
+    const { version, isLatest } = await fetchLatestBaileysVersion()
+    console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
+
 
     const sock = partenza({
+        version,
         auth: state,
         printQRInTerminal: false // We are handling the QR code manually
     });

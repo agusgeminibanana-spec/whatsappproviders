@@ -1,30 +1,28 @@
 
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { MessageCircle, CheckCircle } from "lucide-react";
 import QRCode from "qrcode";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase"; // Import the db instance from your firebase config
+import { db } from "../firebase";
 
 export default function QRConnect() {
-  const navigate = useNavigate();
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "qrcodes", "whatsapp-link"), (doc) => {
-        const data = doc.data();
-        if (data && data.qrString) {
-          setQrCode(data.qrString);
-          setIsConnected(false);
-        } else {
-          setQrCode(null);
-          setIsConnected(true);
-        }
+      const data = doc.data();
+      if (data && data.qrString) {
+        setQrCode(data.qrString);
+        setIsConnected(false);
+      } else {
+        setQrCode(null);
+        setIsConnected(true); // We are connected
+      }
     });
-
-    // Cleanup subscription on unmount
     return () => unsub();
   }, []);
 
@@ -35,12 +33,19 @@ export default function QRConnect() {
   }, [qrCode]);
 
   useEffect(() => {
-    if (isConnected && !qrCode) {
-      setTimeout(() => {
-        navigate("/chats");
+    // When isConnected becomes true, wait 1.5s then set redirect flag
+    if (isConnected) {
+      const timer = setTimeout(() => {
+        setShouldRedirect(true);
       }, 1500);
+      return () => clearTimeout(timer); // Cleanup timer if component unmounts
     }
-  }, [isConnected, qrCode, navigate]);
+  }, [isConnected]);
+
+  // Declarative redirection
+  if (shouldRedirect) {
+    return <Navigate to="/chats" replace />;
+  }
 
   return (
     <div className="flex h-screen w-full bg-gradient-to-br from-background via-background to-primary/10">
