@@ -1,9 +1,11 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { db } from "../firebase";
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, Timestamp, orderBy } from "firebase/firestore";
 import {
   Search,
   Plus,
-  Filter,
   Star,
   Tag,
   MessageSquare,
@@ -12,120 +14,66 @@ import {
   Clock,
 } from "lucide-react";
 
+// Interface matches Firestore data structure
 interface Contact {
   id: string;
   name: string;
   email: string;
   phone: string;
-  avatar: string;
   status: "active" | "inactive" | "lead";
   tags: string[];
-  lastContact: string;
+  lastContact: Timestamp;
   interactions: number;
   notes: string;
   company?: string;
   isFavorite: boolean;
 }
 
-export default function CRMDashboard() {
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      email: "sarah.johnson@company.com",
-      phone: "+1 (555) 123-4567",
-      avatar: "SJ",
-      status: "active",
-      tags: ["Sales", "VIP"],
-      lastContact: "2 hours ago",
-      interactions: 28,
-      notes: "Interested in premium plan upgrade",
-      company: "Tech Corp",
-      isFavorite: true,
-    },
-    {
-      id: "2",
-      name: "John Smith",
-      email: "john.smith@startup.com",
-      phone: "+1 (555) 234-5678",
-      avatar: "JS",
-      status: "active",
-      tags: ["Support", "Enterprise"],
-      lastContact: "1 day ago",
-      interactions: 15,
-      notes: "Account manager: Michael Brown",
-      company: "Startup Inc",
-      isFavorite: false,
-    },
-    {
-      id: "3",
-      name: "Emma Davis",
-      email: "emma.davis@corp.com",
-      phone: "+1 (555) 345-6789",
-      avatar: "ED",
-      status: "lead",
-      tags: ["Prospect", "Marketing"],
-      lastContact: "3 days ago",
-      interactions: 8,
-      notes: "Sent proposal on Monday",
-      company: "Corporate Solutions",
-      isFavorite: false,
-    },
-    {
-      id: "4",
-      name: "Michael Brown",
-      email: "michael.brown@agency.com",
-      phone: "+1 (555) 456-7890",
-      avatar: "MB",
-      status: "active",
-      tags: ["Partner", "Agency"],
-      lastContact: "5 days ago",
-      interactions: 42,
-      notes: "Regular account review scheduled monthly",
-      company: "Digital Agency",
-      isFavorite: true,
-    },
-    {
-      id: "5",
-      name: "Lisa Chen",
-      email: "lisa.chen@retail.com",
-      phone: "+1 (555) 567-8901",
-      avatar: "LC",
-      status: "active",
-      tags: ["Retail", "Support"],
-      lastContact: "1 week ago",
-      interactions: 19,
-      notes: "Bulk order inquiry in progress",
-      company: "Retail Solutions",
-      isFavorite: false,
-    },
-    {
-      id: "6",
-      name: "James Wilson",
-      email: "james.wilson@finance.com",
-      phone: "+1 (555) 678-9012",
-      avatar: "JW",
-      status: "inactive",
-      tags: ["Finance", "Inactive"],
-      lastContact: "3 weeks ago",
-      interactions: 5,
-      notes: "No activity since Q3",
-      company: "Financial Group",
-      isFavorite: false,
-    },
-  ]);
+// Helper to get initials for avatar
+const getInitials = (name: string) => {
+    if (!name) return '?';
+    const words = name.split(' ');
+    if (words.length > 1) return words[0][0] + words[1][0];
+    return name.substring(0, 2);
+};
 
+// Helper to format Firestore Timestamps
+const formatLastContact = (timestamp: Timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate();
+    const now = new Date();
+    const diffSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffSeconds < 60) return `${diffSeconds} seconds ago`;
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} days ago`;
+};
+
+export default function CRMDashboard() {
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<
-    "all" | "active" | "inactive" | "lead"
-  >("all");
+  const [selectedStatus, setSelectedStatus] = useState<"all" | "active" | "inactive" | "lead">("all");
   const [showNewContactModal, setShowNewContactModal] = useState(false);
+  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '', company: '' });
+
+  useEffect(() => {
+    const q = query(collection(db, "crm_contacts"), orderBy("lastContact", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const contactsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contact));
+      setContacts(contactsData);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch =
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.company?.toLowerCase().includes(searchQuery.toLowerCase());
+      (contact.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (contact.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (contact.company?.toLowerCase() || '').includes(searchQuery.toLowerCase());
     const matchesStatus =
       selectedStatus === "all" || contact.status === selectedStatus;
     return matchesSearch && matchesStatus;
@@ -133,29 +81,42 @@ export default function CRMDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-primary/20 text-primary";
-      case "lead":
-        return "bg-yellow-500/20 text-yellow-500";
-      case "inactive":
-        return "bg-muted/50 text-muted-foreground";
-      default:
-        return "bg-muted/20 text-muted-foreground";
+      case "active": return "bg-primary/20 text-primary";
+      case "lead": return "bg-yellow-500/20 text-yellow-500";
+      case "inactive": return "bg-muted/50 text-muted-foreground";
+      default: return "bg-muted/20 text-muted-foreground";
     }
   };
 
-  const toggleFavorite = (id: string) => {
-    setContacts(
-      contacts.map((c) =>
-        c.id === id ? { ...c, isFavorite: !c.isFavorite } : c,
-      ),
-    );
+  const toggleFavorite = async (e: React.MouseEvent, id: string, isFavorite: boolean) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation(); // Stop event bubbling
+    const contactRef = doc(db, "crm_contacts", id);
+    await updateDoc(contactRef, { isFavorite: !isFavorite });
+  };
+
+  const handleAddNewContact = async () => {
+    if (!newContact.name || !newContact.email) {
+      alert("Name and email are required.");
+      return;
+    }
+    await addDoc(collection(db, "crm_contacts"), {
+      ...newContact,
+      status: "lead", // Default status
+      tags: [],
+      lastContact: Timestamp.now(),
+      interactions: 0,
+      notes: "",
+      isFavorite: false,
+    });
+    setShowNewContactModal(false);
+    setNewContact({ name: '', email: '', phone: '', company: '' }); // Reset form
   };
 
   return (
     <div className="flex h-full w-full flex-col bg-background">
-      {/* Page Header */}
-      <div className="border-b border-border px-6 py-4">
+      {/* ... Page Header and Stats ... */}
+       <div className="border-b border-border px-6 py-4">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-foreground">Contacts & CRM</h1>
           <button
@@ -170,9 +131,7 @@ export default function CRMDashboard() {
           Manage your customer relationships and interactions
         </p>
       </div>
-
-      {/* Search and Filters */}
-      <div className="border-b border-border px-6 py-4 space-y-4">
+       <div className="border-b border-border px-6 py-4 space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-foreground mb-2">
@@ -205,8 +164,6 @@ export default function CRMDashboard() {
             </select>
           </div>
         </div>
-
-        {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           <div className="rounded-lg bg-secondary p-3">
             <p className="text-xs text-muted-foreground mb-1">Total Contacts</p>
@@ -245,7 +202,7 @@ export default function CRMDashboard() {
                 No contacts found
               </p>
               <p className="text-sm text-muted-foreground">
-                Try adjusting your search filters
+                Click 'New Contact' to add your first client.
               </p>
             </div>
           </div>
@@ -258,84 +215,42 @@ export default function CRMDashboard() {
                 className="block rounded-lg border border-border bg-card p-4 hover:bg-secondary transition-colors group"
               >
                 <div className="flex items-start gap-4">
-                  {/* Avatar */}
                   <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                    {contact.avatar}
+                    {getInitials(contact.name)}
                   </div>
-
-                  {/* Contact Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-foreground group-hover:text-primary">
                         {contact.name}
                       </h3>
                       <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toggleFavorite(contact.id);
-                        }}
+                        onClick={(e) => toggleFavorite(e, contact.id, contact.isFavorite)}
                         className="flex-shrink-0 p-1 hover:bg-secondary rounded transition-colors"
                       >
-                        <Star
-                          className={`h-4 w-4 ${
-                            contact.isFavorite
-                              ? "fill-yellow-500 text-yellow-500"
-                              : "text-muted-foreground"
-                          }`}
-                        />
+                        <Star className={`h-4 w-4 ${contact.isFavorite ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground"}`} />
                       </button>
                     </div>
-
                     <div className="flex flex-wrap items-center gap-3 mb-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        <span className="truncate">{contact.email}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        <span>{contact.phone}</span>
-                      </div>
+                      {contact.email && <div className="flex items-center gap-1"><Mail className="h-3 w-3" /><span className="truncate">{contact.email}</span></div>}
+                      {contact.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /><span>{contact.phone}</span></div>}
                     </div>
-
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span
-                        className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(contact.status)}`}
-                      >
-                        {contact.status.charAt(0).toUpperCase() +
-                          contact.status.slice(1)}
+                      <span className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(contact.status)}`}>
+                        {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                       </span>
                       {contact.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground"
-                        >
+                        <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground">
                           <Tag className="h-3 w-3" />
                           {tag}
                         </span>
                       ))}
                     </div>
-
                     <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        <span>{contact.interactions} interactions</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Last: {contact.lastContact}</span>
-                      </div>
-                      {contact.company && (
-                        <span className="rounded bg-secondary px-2 py-1">
-                          {contact.company}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /><span>{contact.interactions} interactions</span></div>
+                      <div className="flex items-center gap-1"><Clock className="h-3 w-3" /><span>Last: {formatLastContact(contact.lastContact)}</span></div>
+                      {contact.company && <span className="rounded bg-secondary px-2 py-1">{contact.company}</span>}
                     </div>
-
-                    {contact.notes && (
-                      <p className="mt-2 text-xs text-muted-foreground italic">
-                        "{contact.notes}"
-                      </p>
-                    )}
+                    {contact.notes && <p className="mt-2 text-xs text-muted-foreground italic">"{contact.notes}"</p>}
                   </div>
                 </div>
               </Link>
@@ -344,47 +259,19 @@ export default function CRMDashboard() {
         )}
       </div>
 
-      {/* New Contact Modal Placeholder */}
+      {/* New Contact Modal */}
       {showNewContactModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-            <h2 className="mb-4 text-xl font-bold text-foreground">
-              Add New Contact
-            </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowNewContactModal(false)}>
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-xl font-bold text-foreground">Add New Contact</h2>
             <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Full Name"
-                className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                type="email"
-                placeholder="Email Address"
-                className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                type="tel"
-                placeholder="Phone Number"
-                className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                type="text"
-                placeholder="Company"
-                className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <input type="text" placeholder="Full Name" value={newContact.name} onChange={(e) => setNewContact({...newContact, name: e.target.value})} className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              <input type="email" placeholder="Email Address" value={newContact.email} onChange={(e) => setNewContact({...newContact, email: e.target.value})} className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              <input type="tel" placeholder="Phone Number" value={newContact.phone} onChange={(e) => setNewContact({...newContact, phone: e.target.value})} className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              <input type="text" placeholder="Company" value={newContact.company} onChange={(e) => setNewContact({...newContact, company: e.target.value})} className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowNewContactModal(false)}
-                  className="flex-1 rounded-lg border border-border px-4 py-2 font-medium text-foreground hover:bg-secondary transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setShowNewContactModal(false)}
-                  className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Add Contact
-                </button>
+                <button onClick={() => setShowNewContactModal(false)} className="flex-1 rounded-lg border border-border px-4 py-2 font-medium text-foreground hover:bg-secondary transition-colors">Cancel</button>
+                <button onClick={handleAddNewContact} className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 transition-colors">Add Contact</button>
               </div>
             </div>
           </div>

@@ -1,5 +1,0 @@
-onlyBuiltDependencies:
-  - '@firebase/util'
-  - '@whiskeysockets/baileys'
-  - protobufjs
-  - sharp

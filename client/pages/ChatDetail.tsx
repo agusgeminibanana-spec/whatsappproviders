@@ -8,7 +8,6 @@ import {
   query, 
   orderBy, 
   onSnapshot, 
-  addDoc,
   doc,
   Timestamp 
 } from 'firebase/firestore';
@@ -92,16 +91,18 @@ export default function ChatDetail() {
     const text = messageInput;
     setMessageInput('');
 
-    // Instead of updating local state, we write to a new 'outgoing_messages' collection.
-    // The bot will be listening to this collection, send the message, and then the
-    // 'messages.upsert' event will trigger the bot to save it to the correct chat.
-    // Our messages listener above will then pick it up automatically.
     try {
-      await addDoc(collection(db, 'outgoing_messages'), {
-        chatId: id,
-        text: text,
-        createdAt: Timestamp.now(),
+      const response = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId: id, text }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       // Optionally, show an error to the user

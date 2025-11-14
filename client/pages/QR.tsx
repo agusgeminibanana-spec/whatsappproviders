@@ -8,42 +8,34 @@ import { db } from "../firebase";
 
 export default function QRConnect() {
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [status, setStatus] = useState<'pending' | 'connected' | 'disconnected'>('pending');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "qrcodes", "whatsapp-link"), (doc) => {
+    // Listen to the session document for status changes
+    const unsub = onSnapshot(doc(db, "whatsapp_sessions", "fusion-app"), (doc) => {
       const data = doc.data();
-      if (data && data.qrString) {
-        setQrCode(data.qrString);
-        setIsConnected(false);
+      if (data) {
+        setStatus(data.status || 'disconnected');
+        setQrCode(data.qr || null);
       } else {
+        // If the document doesn't exist, assume disconnected and waiting for a QR
+        setStatus('disconnected');
         setQrCode(null);
-        setIsConnected(true); // We are connected
       }
     });
     return () => unsub();
   }, []);
 
   useEffect(() => {
-    if (qrCode && canvasRef.current) {
+    // Draw the QR code whenever the qrCode state updates
+    if (qrCode && status === 'pending' && canvasRef.current) {
       QRCode.toCanvas(canvasRef.current, qrCode, { width: 220, margin: 1 });
     }
-  }, [qrCode]);
+  }, [qrCode, status]);
 
-  useEffect(() => {
-    // When isConnected becomes true, wait 1.5s then set redirect flag
-    if (isConnected) {
-      const timer = setTimeout(() => {
-        setShouldRedirect(true);
-      }, 1500);
-      return () => clearTimeout(timer); // Cleanup timer if component unmounts
-    }
-  }, [isConnected]);
-
-  // Declarative redirection
-  if (shouldRedirect) {
+  // Redirect declaratively when status is 'connected'
+  if (status === 'connected') {
     return <Navigate to="/chats" replace />;
   }
 
@@ -51,7 +43,7 @@ export default function QRConnect() {
     <div className="flex h-screen w-full bg-gradient-to-br from-background via-background to-primary/10">
       {/* Left Side - Information */}
       <div className="hidden lg:flex w-1/2 flex-col items-center justify-center bg-gradient-to-br from-primary/20 to-background/50 p-12">
-        <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 backdrop-blur-xl border border-primary/30">
+         <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 backdrop-blur-xl border border-primary/30">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary">
             <MessageCircle className="h-10 w-10 text-primary-foreground" />
           </div>
@@ -105,8 +97,6 @@ export default function QRConnect() {
             </div>
           </div>
         </div>
-
-        {/* Security Notice */}
         <div className="mt-12 p-4 rounded-lg bg-primary/10 border border-primary/20 max-w-sm">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold text-foreground block mb-1">
@@ -140,33 +130,27 @@ export default function QRConnect() {
 
           {/* QR Code Container */}
           <div className="mb-8 flex flex-col items-center">
-            {!isConnected ? (
-              <div className="relative">
-                {/* QR Code Background */}
-                <div className="w-64 h-64 bg-white rounded-2xl shadow-2xl p-4 flex items-center justify-center">
-                  {qrCode ? (
+             <div className="relative w-64 h-64 bg-white rounded-2xl shadow-2xl p-4 flex items-center justify-center">
+                {qrCode && status === 'pending' ? (
                     <canvas ref={canvasRef} />
-                  ) : (
+                ) : (
                     <div className="flex flex-col items-center">
-                      <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
-                      <p className="text-sm text-foreground font-medium">
-                        Generating QR Code...
-                      </p>
+                    {status === 'connected' ? (
+                        <>
+                            <CheckCircle className="h-20 w-20 text-primary mx-auto mb-4" />
+                            <p className="text-lg font-bold text-primary">Connected!</p>
+                        </>
+                    ) : (
+                        <>
+                           <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
+                           <p className="text-sm text-foreground font-medium">
+                                Waiting for Server...
+                           </p>
+                        </>
+                    )}
                     </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="w-64 h-64 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl shadow-2xl flex items-center justify-center border border-primary/30">
-                <div className="text-center">
-                  <CheckCircle className="h-20 w-20 text-primary mx-auto mb-4 animate-bounce" />
-                  <p className="text-lg font-bold text-primary">Connected!</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Redirecting...
-                  </p>
-                </div>
-              </div>
-            )}
+                )}
+            </div>
           </div>
         </div>
       </div>
