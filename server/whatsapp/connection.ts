@@ -1,92 +1,111 @@
 
+import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import makeWASocket, {
   DisconnectReason,
+  makeInMemoryStore,
   useMultiFileAuthState,
-  makeCacheableSignalKeyStore,
-} from "@airgram/baileys";
-import { Boom } from "@hapi/boom";
-import { db } from "../firebase";
-import pino from "pino";
+} from "@whiskeysockets/baileys";
+import { db } from "../firebase"; // Ensure this path is correct
 
-// Logger configuration
-const logger = pino({ level: "info" });
+let sock: ReturnType<typeof makeWASocket> | undefined;
+let qrCodeString: string | undefined;
+const sessionDocRef = doc(db, "whatsapp_sessions", "fusion-app");
 
-// Session and database configuration
-const sessionName = process.env.WHATSAPP_SESSION || "fusion-app";
-const sessionRef = db.collection("whatsapp_sessions").doc(sessionName);
-const qrRef = db.collection("qrcodes").doc("whatsapp-link");
+// Configure an in-memory store for Baileys
+const store = makeInMemoryStore({});
+store.readFromFile("./baileys_store.json");
+// Save the store to a file every 10 seconds
+setInterval(() => {
+  store.writeToFile("./baileys_store.json");
+}, 10_000);
 
-let socket: ReturnType<typeof makeWASocket> | undefined;
+async function connectToWhatsApp() {
+  // If a socket already exists and is connected, do nothing.
+  if (sock) {
+    console.log("WhatsApp is already connected or connecting.");
+    return;
+  }
 
-/**
- * Cleans up all session data from Firebase, forcing a new QR scan.
- */
-const cleanupFirebaseSession = async () => {
-  console.log("Cleaning up Firebase session data...");
-  const batch = db.batch();
-  batch.delete(sessionRef);
-  // **CRITICAL FIX**: Create the QR doc to signal logout to the frontend.
-  // The frontend considers the session ended only when this doc EXISTS.
-  batch.set(qrRef, { expired: true, timestamp: new Date() });
-  await batch.commit();
-  console.log("Firebase session data cleaned up. QR document created to force re-scan.");
-};
+  console.log("Starting new WhatsApp connection...");
+  const { state, saveCreds } = await useMultiFileAuthState("baileys_auth_info");
 
-/**
- * Initializes and connects the WhatsApp socket.
- */
-export async function connectToWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState(`auth/baileys/${sessionName}`);
-
-  socket = makeWASocket({
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger),
-    },
-    printQRInTerminal: true,
-    logger,
-    browser: ["Fusiona CRM", "Desktop", "4.0"],
+  sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true, // This is useful for server-side debugging
   });
 
-  socket.ev.on("creds.update", saveCreds);
+  // Pass the store to the socket
+  store.bind(sock.ev);
 
-  socket.ev.on("connection.update", async (update) => {
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      console.log("QR code generated. Saving to Firestore.");
-      // When a new QR is available, ensure it is written to Firestore.
-      await qrRef.set({ qr, connected: false, timestamp: new Date() });
+      console.log("QR code generated.");
+      qrCodeString = qr;
+      // Immediately update Firestore with the new QR code
+      await setDoc(doc(db, "qrcodes", "whatsapp-link"), { qrString: qr, status: "pending" });
+    } else if (qrCodeString && !qr) {
+      // QR code was scanned, clear it
+      qrCodeString = undefined;
+      await deleteDoc(doc(db, "qrcodes", "whatsapp-link"));
     }
 
     if (connection === "open") {
       console.log("WhatsApp connection opened.");
-      // Session is active, so the QR document must be deleted.
-      await qrRef.delete(); 
-      await sessionRef.set({ connected: true, timestamp: new Date() });
-    }
+      // Once connected, set the session document in Firestore
+      await setDoc(sessionDocRef, { connected: true, timestamp: new Date() });
+    } else if (connection === "close") {
+      console.log("WhatsApp connection closed.");
+      // Connection closed, delete the session document
+      await deleteDoc(sessionDocRef);
 
-    if (connection === "close") {
-      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      console.error("Connection closed. Reason:", statusCode, lastDisconnect?.error);
+      const shouldReconnect = 
+        (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
+      
+      console.log(
+        `Connection closed due to: ${lastDisconnect?.error}, reconnecting: ${shouldReconnect}`
+      );
+      // Clear the socket
+      sock = undefined;
 
-      // This is the definitive logout signal.
-      if (statusCode === DisconnectReason.loggedOut) {
-        console.log("Logged out from WhatsApp. Cleaning up session...");
-        await cleanupFirebaseSession();
-        // Optional: you might want to stop the process or prevent reconnection here.
-      } else {
-        // For any other disconnection reason, attempt to reconnect.
+      if (shouldReconnect) {
         console.log("Reconnecting...");
-        connectToWhatsApp();
+        setTimeout(connectToWhatsApp, 5000); // Add a delay before reconnecting
+      } else {
+        console.log("Not reconnecting, user logged out.");
+        // Also clear QR doc on final logout
+        await deleteDoc(doc(db, "qrcodes", "whatsapp-link")).catch(() => {});
       }
     }
   });
 
-  return socket;
+  sock.ev.on("messages.upsert", async (m) => {
+    console.log("Received message:", JSON.stringify(m, undefined, 2));
+    // You can add message processing logic here
+  });
 }
 
-/**
- * Retrieves the current WhatsApp socket instance.
- */
-export const getSocket = () => socket;
+async function disconnectFromWhatsApp() {
+  if (sock) {
+    console.log("Disconnecting from WhatsApp...");
+    await sock.logout();
+    // The 'connection.update' event handler will manage the cleanup
+    sock = undefined;
+  }
+  // As a final measure, ensure all session-related documents are deleted
+  await deleteDoc(sessionDocRef).catch(e => console.error("Error deleting session doc", e));
+  await deleteDoc(doc(db, "qrcodes", "whatsapp-link")).catch(e => console.error("Error deleting QR doc", e));
+  console.log("WhatsApp cleanup complete.");
+}
+
+function getQrCode() {
+  return qrCodeString;
+}
+
+// Automatically start the connection when the server boots up
+connectToWhatsApp();
+
+export { connectToWhatsApp, disconnectFromWhatsApp, getQrCode };

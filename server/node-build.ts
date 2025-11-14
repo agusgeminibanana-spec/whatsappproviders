@@ -9,16 +9,16 @@ const port = process.env.PORT || 3000;
 const __dirname = import.meta.dirname;
 const distPath = path.join(__dirname, "../spa");
 
-// Serve static files
+// Serve static assets from the SPA build directory
 app.use(express.static(distPath));
 
-// Handle React Router - serve index.html for all non-API routes
-app.get("*", (req, res) => {
-  // Don't serve index.html for API routes
-  if (req.path.startsWith("/api/") || req.path.startsWith("/health")) {
-    return res.status(404).json({ error: "API endpoint not found" });
-  }
-
+// This route handler will match all routes that are not caught by the static file server
+// or the API routes defined in `createServer()`.
+// It uses a regular expression to exclude routes starting with `/api/`.
+app.get(/^\/(?!api).*/, (_req, res) => {
+  // For any non-API request that doesn't match a static file,
+  // serve the main `index.html` file of the React application.
+  // This allows React Router to handle the client-side routing.
   res.sendFile(path.join(distPath, "index.html"));
 });
 

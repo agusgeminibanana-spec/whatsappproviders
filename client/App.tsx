@@ -11,7 +11,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import AppLayout from "./components/AppLayout";
 import Login from "./pages/Login";
-import QRConnect from "./pages/QRConnect";
+import QR from "./pages/QR";
 import Index from "./pages/Index";
 import ChatDetail from "./pages/ChatDetail";
 import CRMDashboard from "./pages/CRMDashboard";
@@ -21,20 +21,15 @@ import ChatList from "./pages/ChatList";
 
 const queryClient = new QueryClient();
 
-/**
- * Main component to manage application routes and state based on the definitive prompt.
- */
 function AppRoutes() {
   const [authGoogle, setAuthGoogle] = useState<User | null>(null);
   const [authWhatsapp, setAuthWhatsapp] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Stage 1: Google Auth State Listener.
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setAuthGoogle(currentUser);
       if (!currentUser) {
-        // If Google Auth is lost, WhatsApp Auth is also considered lost.
         setAuthWhatsapp(false);
       }
       setLoading(false);
@@ -43,30 +38,23 @@ function AppRoutes() {
   }, []);
 
   useEffect(() => {
-    // Stage 2: WhatsApp Auth State Listener (via Firestore).
-    // This only runs if the user is authenticated with Google.
     if (authGoogle) {
-      const sessionDocRef = doc(db, "qrcodes", "whatsapp-link");
+      const sessionDocRef = doc(db, "whatsapp_sessions", "fusion-app");
       const unsubscribeDB = onSnapshot(sessionDocRef, (doc) => {
-        // If the document does NOT exist, it means the session is active.
-        setAuthWhatsapp(!doc.exists());
+        setAuthWhatsapp(doc.exists());
       });
       return () => unsubscribeDB();
     } else {
-      // No Google user, so WhatsApp cannot be connected.
       setAuthWhatsapp(false);
     }
   }, [authGoogle]);
 
   if (loading) {
-    // Display a blank page or minimal loader to avoid flashes of incorrect routes.
     return <div className="w-full h-screen bg-background" />;
   }
 
   return (
     <Routes>
-      {/* 1. ROOT PATH */}
-      {/* Acts as the main entry point and redirects based on authentication status. */}
       <Route
         path="/"
         element={
@@ -75,7 +63,7 @@ function AppRoutes() {
               !authGoogle
                 ? "/login"
                 : !authWhatsapp
-                ? "/qr-connect"
+                ? "/qr"
                 : "/chats"
             }
             replace
@@ -83,43 +71,36 @@ function AppRoutes() {
         }
       />
 
-      {/* 2. LOGIN ROUTE */}
-      {/* If the user is already authenticated, redirect them to the appropriate next step. */}
       <Route
         path="/login"
         element={
           authGoogle ? (
-            <Navigate to={authWhatsapp ? "/chats" : "/qr-connect"} replace />
+            <Navigate to={authWhatsapp ? "/chats" : "/qr"} replace />
           ) : (
             <Login />
           )
         }
       />
 
-      {/* 3. QR-CONNECT ROUTE */}
-      {/* Requires Google auth. If not present, redirects to /login. */}
-      {/* If WhatsApp is already connected, redirects to the main app. */}
       <Route
-        path="/qr-connect"
+        path="/qr"
         element={
           !authGoogle ? (
             <Navigate to="/login" replace />
           ) : authWhatsapp ? (
             <Navigate to="/chats" replace />
           ) : (
-            <QRConnect />
+            <QR />
           )
         }
       />
 
-      {/* 4. FULLY PROTECTED ROUTES */}
-      {/* These routes require both Google and WhatsApp authentication. */}
       <Route
         element={
           authGoogle && authWhatsapp ? (
             <Outlet />
           ) : (
-            <Navigate to={!authGoogle ? "/login" : "/qr-connect"} replace />
+            <Navigate to={!authGoogle ? "/login" : "/qr"} replace />
           )
         }
       >
@@ -129,8 +110,6 @@ function AppRoutes() {
         <Route path="/crm/:id" element={<AppLayout><CustomerProfile /></AppLayout>} />
       </Route>
 
-      {/* 5. CATCH-ALL ROUTE */}
-      {/* Handles any undefined paths. */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

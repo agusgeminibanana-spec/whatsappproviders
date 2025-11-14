@@ -42,10 +42,13 @@ export default function Header() {
       // 1. Trigger backend WhatsApp session destruction
       await triggerBackendWhatsAppLogout();
       
-      // 2. Sign out from Firebase Auth. The listener in App.tsx will handle the rest.
+      // 2. Explicitly delete the Firestore session document to ensure state is cleared.
+      await deleteDoc(doc(db, "whatsapp_sessions", "fusion-app"));
+
+      // 3. Sign out from Firebase Auth. The listener in App.tsx will handle the rest.
       await signOut(auth);
       
-      // 3. Clear all local data as a final measure.
+      // 4. Clear all local data as a final measure.
       localStorage.clear();
       sessionStorage.clear();
 
@@ -65,7 +68,7 @@ export default function Header() {
       // 2. Delete the session document from Firestore. 
       // This is the primary signal for the frontend to update its state.
       // The onSnapshot listener in App.tsx will detect this and set isWhatsAppConnected to false.
-      await deleteDoc(doc(db, "qrcodes", "whatsapp-link"));
+      await deleteDoc(doc(db, "whatsapp_sessions", "fusion-app"));
       
       // Note: No local data clearing here, as the Google session remains.
       // The redirect to /whatsapp-qr is handled automatically by App.tsx.
