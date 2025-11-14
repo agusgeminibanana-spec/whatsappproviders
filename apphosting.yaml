@@ -1,0 +1,6 @@
+# apphosting.yaml
+run:
+  build:
+    - command: 'pnpm install'
+    - command: 'pnpm --filter backend build'
+  entryPoint: 'pnpm --filter backend start'
