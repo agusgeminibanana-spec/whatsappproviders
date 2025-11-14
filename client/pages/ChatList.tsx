@@ -1,102 +1,73 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Search, Plus, Edit3, MessageCircle } from "lucide-react";
 
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Search, MessageCircle } from 'lucide-react';
+import { collection, query, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase'; // Assuming your firebase config is in firebase.ts
+
+// Updated interface to match Firestore data structure
 interface Chat {
   id: string;
   name: string;
-  avatar: string;
   lastMessage: string;
-  timestamp: string;
-  unread: number;
-  online?: boolean;
+  timestamp: Timestamp;
+  unreadCount: number;
 }
 
-export default function ChatList() {
-  const [chats] = useState<Chat[]>([
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      avatar: "SJ",
-      lastMessage: "Sounds great! See you tomorrow",
-      timestamp: "2:45 PM",
-      unread: 0,
-      online: true,
-    },
-    {
-      id: "2",
-      name: "Family Group",
-      avatar: "FG",
-      lastMessage: "Mom: Did you see the photos from vacation?",
-      timestamp: "1:30 PM",
-      unread: 3,
-      online: false,
-    },
-    {
-      id: "3",
-      name: "John Smith",
-      avatar: "JS",
-      lastMessage: "Thanks for the recommendation!",
-      timestamp: "Yesterday",
-      unread: 0,
-      online: true,
-    },
-    {
-      id: "4",
-      name: "Work Team",
-      avatar: "WT",
-      lastMessage: "Alex: Project deadline moved to Friday",
-      timestamp: "Yesterday",
-      unread: 5,
-      online: false,
-    },
-    {
-      id: "5",
-      name: "Emma Davis",
-      avatar: "ED",
-      lastMessage: "That sounds perfect!",
-      timestamp: "Monday",
-      unread: 0,
-      online: false,
-    },
-    {
-      id: "6",
-      name: "Design Team",
-      avatar: "DT",
-      lastMessage: "Design files are ready for review",
-      timestamp: "Monday",
-      unread: 0,
-      online: false,
-    },
-    {
-      id: "7",
-      name: "Michael Brown",
-      avatar: "MB",
-      lastMessage: "Let's catch up soon!",
-      timestamp: "Sunday",
-      unread: 0,
-      online: true,
-    },
-    {
-      id: "8",
-      name: "Project Group",
-      avatar: "PG",
-      lastMessage: "All tasks completed on schedule",
-      timestamp: "Sunday",
-      unread: 0,
-      online: false,
-    },
-  ]);
+// Helper function to format Firestore Timestamps
+const formatTimestamp = (timestamp: Timestamp) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-  const [searchQuery, setSearchQuery] = useState("");
+    if (date >= today) {
+        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+    if (date >= yesterday) {
+        return 'Yesterday';
+    }
+    return date.toLocaleDateString();
+};
+
+// Helper to get initials for avatar
+const getInitials = (name: string) => {
+    if (!name) return '?';
+    const words = name.split(' ');
+    if (words.length > 1) {
+        return words[0][0] + words[1][0];
+    }
+    return name.substring(0, 2);
+};
+
+export default function ChatList() {
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const q = query(collection(db, 'chats'), orderBy('timestamp', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const chatsData: Chat[] = [];
+      querySnapshot.forEach((doc) => {
+        // Make sure to cast the document data to the expected type
+        chatsData.push({ ...doc.data(), id: doc.id } as Chat);
+      });
+      setChats(chatsData);
+    });
+
+    // Cleanup listener on component unmount
+    return () => unsubscribe();
+  }, []);
 
   const filteredChats = chats.filter((chat) =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    chat.name && chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
     <div className="flex w-full h-full bg-background">
-      {/* Chat List Sidebar */}
       <div className="w-full sm:w-96 flex flex-col border-r border-border bg-background">
         {/* Search Bar */}
         <div className="border-b border-border p-4">
@@ -117,17 +88,14 @@ export default function ChatList() {
           {filteredChats.map((chat) => (
             <Link
               key={chat.id}
-              to={`/chat/${chat.id}`}
+              to={`/chats/${chat.id}`}
               className="flex items-start gap-3 border-b border-border px-4 py-3 hover:bg-secondary transition-colors cursor-pointer"
             >
               {/* Avatar */}
               <div className="relative mt-1 flex-shrink-0">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
-                  {chat.avatar}
+                  {getInitials(chat.name)}
                 </div>
-                {chat.online && (
-                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-primary border-2 border-background" />
-                )}
               </div>
 
               {/* Chat Info */}
@@ -137,7 +105,7 @@ export default function ChatList() {
                     {chat.name}
                   </h3>
                   <span className="ml-2 flex-shrink-0 text-xs text-muted-foreground">
-                    {chat.timestamp}
+                    {formatTimestamp(chat.timestamp)}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground truncate">
@@ -146,10 +114,10 @@ export default function ChatList() {
               </div>
 
               {/* Unread Badge */}
-              {chat.unread > 0 && (
+              {chat.unreadCount > 0 && (
                 <div className="ml-2 flex-shrink-0">
                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                    {chat.unread > 9 ? "9+" : chat.unread}
+                    {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
                   </div>
                 </div>
               )}
