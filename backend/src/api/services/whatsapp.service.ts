@@ -141,8 +141,6 @@ class WhatsAppService {
       lastUpdated: admin.firestore.FieldValue.serverTimestamp()
     });
     console.log('Logout process completed. Ready for a new session.');
-    // Re-initialize to get a new QR code
-    this.init();
   }
 
   private listenForOutgoingMessages() {
