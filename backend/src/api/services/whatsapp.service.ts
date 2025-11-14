@@ -13,7 +13,7 @@ class WhatsAppService {
   private sessionDocRef = db().collection('whatsapp_sessions').doc('fusion-app');
 
   public async init() {
-    // Session is now persisted. Cleanup happens on explicit logout.
+    // Session is now persisted. Cleanup happens only on explicit user logout.
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
