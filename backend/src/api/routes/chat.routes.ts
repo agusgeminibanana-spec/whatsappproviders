@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { chatService } from '../services/chat.service';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/send', async (req, res) => {
   const { chatId, text } = req.body;

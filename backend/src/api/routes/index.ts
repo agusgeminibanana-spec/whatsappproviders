@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { whatsAppService } from '../services/whatsapp.service';
 
-const router = Router();
+const router: Router = Router();
 
 // Existing route to get session status (useful for the frontend)
 router.get('/whatsapp/status', async (req, res) => {
