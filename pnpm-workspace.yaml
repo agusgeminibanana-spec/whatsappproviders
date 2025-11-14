@@ -1,3 +1,12 @@
 packages:
-  - 'client'
-  - 'backend'
+  - client
+  - backend
+
+onlyBuiltDependencies:
+  - '@firebase/util'
+  - '@swc/core'
+  - '@whiskeysockets/baileys'
+  - esbuild
+  - protobufjs
+  - re2
+  - sharp

@@ -108,6 +108,7 @@ function AppRoutes() {
         <Route path="/chats/:id" element={<AppLayout><ChatDetail /></AppLayout>} />
         <Route path="/crm" element={<AppLayout><CRMDashboard /></AppLayout>} />
         <Route path="/crm/:id" element={<AppLayout><CustomerProfile /></AppLayout>} />
+        <Route path="/index" element={<AppLayout><Index /></AppLayout>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
