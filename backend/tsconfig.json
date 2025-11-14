@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "outDir": "dist",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist/server",
     "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "outFile": "dist/server/production.mjs"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
