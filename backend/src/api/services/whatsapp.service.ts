@@ -3,13 +3,17 @@ import partenza, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVe
 import { Boom } from '@hapi/boom';
 import { db } from '../../config/firebase';
 import * as admin from 'firebase-admin';
+import fs from 'fs/promises';
+import path from 'path';
+
+const SESSION_DIR = 'baileys_auth_info';
 
 class WhatsAppService {
   private sock: any;
   private sessionDocRef = db().collection('whatsapp_sessions').doc('fusion-app');
 
   public async init() {
-    const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
@@ -26,43 +30,46 @@ class WhatsAppService {
 
   private setupEventListeners() {
     this.sock.ev.on('connection.update', async (update: any) => {
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr) {
-        console.log('QR code received, updating session document...');
-        await this.sessionDocRef.set({ 
-            status: 'pending',
-            qr: qr,
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
-        });
-        console.log('Session document updated with new QR code.');
-      }
-
-      if (connection === 'close') {
-        const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-        console.log('Connection closed due to', lastDisconnect?.error, ', reconnecting:', shouldReconnect);
-        if (shouldReconnect) {
-          this.init();
-        } else {
-          console.log('Logged out. Setting session status to disconnected.');
+        const { connection, lastDisconnect, qr } = update;
+  
+        if (qr) {
+          console.log('QR code received, updating session document...');
           await this.sessionDocRef.set({ 
-              status: 'disconnected',
+              status: 'pending',
+              qr: qr,
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log('Session document updated with new QR code.');
+        }
+  
+        if (connection === 'close') {
+          const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+          console.log('Connection closed due to', lastDisconnect?.error, ', reconnecting:', shouldReconnect);
+          if (shouldReconnect) {
+            // Use a brief delay before attempting to re-initialize to prevent rapid loops
+            setTimeout(() => this.init(), 5000);
+          } else {
+            console.log('Logged out. Setting session status to disconnected.');
+            await this.sessionDocRef.set({ 
+                status: 'disconnected',
+                qr: null,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+            });
+            // Optionally, we could also clean up the session files here
+            // await this.cleanupSession();
+          }
+        } else if (connection === 'open') {
+          console.log('Connection opened. Setting session status to connected.');
+          await this.sessionDocRef.set({ 
+              status: 'connected',
               qr: null,
               lastUpdated: admin.firestore.FieldValue.serverTimestamp()
           });
+          console.log('Session status updated to connected.');
         }
-      } else if (connection === 'open') {
-        console.log('Connection opened. Setting session status to connected.');
-        await this.sessionDocRef.set({ 
-            status: 'connected',
-            qr: null,
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
-        });
-        console.log('Session status updated to connected.');
-      }
-    });
+      });
 
-    this.sock.ev.on('messages.upsert', async (m: any) => {
+      this.sock.ev.on('messages.upsert', async (m: any) => {
         const msgInfo = m.messages[0];
         if (!msgInfo.message || msgInfo.key.remoteJid === 'status@broadcast') return;
       
@@ -104,6 +111,40 @@ class WhatsAppService {
       });
   }
 
+  private async cleanupSession() {
+    try {
+      const sessionDir = path.resolve(SESSION_DIR);
+      const sessionExists = await fs.access(sessionDir).then(() => true).catch(() => false);
+      if (sessionExists) {
+        console.log(`Deleting session directory: ${sessionDir}`);
+        await fs.rm(sessionDir, { recursive: true, force: true });
+        console.log('Session directory deleted.');
+      }
+    } catch (error) {
+      console.error('Error during session cleanup:', error);
+    }
+  }
+
+  public async logout() {
+    console.log('Starting logout process...');
+    // Disconnect the socket
+    if (this.sock) {
+      await this.sock.logout();
+      this.sock = null; // Clear the socket reference
+    }
+    // Clean up the session files
+    await this.cleanupSession();
+    // Update the status in Firestore
+    await this.sessionDocRef.set({
+      status: 'disconnected',
+      qr: null,
+      lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('Logout process completed. Ready for a new session.');
+    // Re-initialize to get a new QR code
+    this.init();
+  }
+
   private listenForOutgoingMessages() {
     db().collection('outgoing_messages').onSnapshot(snapshot => {
       snapshot.docChanges().forEach(async (change) => {
@@ -123,10 +164,12 @@ class WhatsAppService {
   }
 
   public async sendMessage(chatId: string, text: string) {
-    if (this.sock) {
+    if (this.sock && this.sock.user) {
         console.log(`Sending message to ${chatId}: "${text}"`);
         await this.sock.sendMessage(chatId, { text });
         console.log(`Successfully sent message to ${chatId}`);
+    } else {
+        console.error('Cannot send message, socket not connected or user not available.');
     }
   }
 }
