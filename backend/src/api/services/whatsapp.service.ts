@@ -96,13 +96,20 @@ class WhatsAppService {
             transaction.set(messagesRef.doc(msgInfo.key.id), messageData);
       
             const currentUnreadCount = chatDoc.exists ? chatDoc.data()?.unreadCount || 0 : 0;
-            const chatData = {
+            
+            // Prepare base chat data
+            const chatData: any = {
               id: chatId,
-              name: msgInfo.pushName || chatId.split('@')[0],
               lastMessage: messageContent,
               timestamp: admin.firestore.Timestamp.fromMillis(Number(msgInfo.messageTimestamp) * 1000),
               unreadCount: msgInfo.key.fromMe ? 0 : currentUnreadCount + 1,
             };
+
+            // Conditionally set the name to avoid overwriting an existing good name
+            if (!chatDoc.exists || !chatDoc.data()?.name || chatDoc.data()?.name === chatId.split('@')[0]) {
+                chatData.name = msgInfo.pushName || chatId.split('@')[0];
+            }
+      
             transaction.set(chatRef, chatData, { merge: true });
           });
           console.log(`Successfully saved message ${msgInfo.key.id} to chat ${chatId}`);
