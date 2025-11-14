@@ -2,6 +2,9 @@ packages:
   - client
   - backend
 
+ignoredBuiltDependencies:
+  - puppeteer
+
 onlyBuiltDependencies:
   - '@firebase/util'
   - '@swc/core'

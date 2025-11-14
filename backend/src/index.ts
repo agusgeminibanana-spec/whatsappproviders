@@ -21,7 +21,8 @@ if (process.env.NODE_ENV !== 'production') {
 initializeFirebase();
 
 // Initialize WhatsApp Service to generate the QR code
-whatsAppService.init().catch(err => console.error('Error initializing WhatsApp Service:', err));
+// ATENTION: Temporarily commented out to allow deployment.
+// whatsAppService.init().catch(err => console.error('Error initializing WhatsApp Service:', err));
 
 // API routes are used in both dev and prod
 app.use('/api', apiRoutes);
