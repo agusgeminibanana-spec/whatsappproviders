@@ -1,14 +1,11 @@
 
 import { Router } from 'express';
-import { whatsAppService } from '../services/whatsapp.service';
+import { whatsAppService } from '../services/whatsapp.service.js';
 
-const router: Router = Router();
+const router = Router();
 
-// Existing route to get session status (useful for the frontend)
 router.get('/whatsapp/status', async (req, res) => {
   try {
-    // This part would ideally read the status from where it's stored (e.g., Firestore)
-    // For now, we'll keep it simple.
     res.json({ status: 'Not implemented' }); 
   } catch (error) {
     console.error(error);
@@ -16,10 +13,8 @@ router.get('/whatsapp/status', async (req, res) => {
   }
 });
 
-// New route to handle logout
 router.post('/whatsapp/logout', async (req, res) => {
     try {
-      console.log('Received request to log out from WhatsApp.');
       await whatsAppService.logout();
       res.status(200).json({ message: 'Logout successful, new QR code is being generated.' });
     } catch (error) {
@@ -28,7 +23,6 @@ router.post('/whatsapp/logout', async (req, res) => {
     }
 });
 
-// Route to send a message
 router.post('/whatsapp/send', async (req, res) => {
     try {
         const { chatId, text } = req.body;

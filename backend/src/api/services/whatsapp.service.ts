@@ -1,8 +1,8 @@
 
 import partenza, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
-import { db } from '../../config/firebase';
-import * as admin from 'firebase-admin';
+import { db } from '../../config/firebase.js';
+import admin from 'firebase-admin';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -13,7 +13,6 @@ class WhatsAppService {
   private sessionDocRef = db().collection('whatsapp_sessions').doc('fusion-app');
 
   public async init() {
-    // Session is now persisted. Cleanup happens only on explicit user logout.
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
@@ -26,7 +25,6 @@ class WhatsAppService {
 
     this.sock.ev.on('creds.update', saveCreds);
     this.setupEventListeners();
-    this.listenForOutgoingMessages();
   }
 
   private setupEventListeners() {
@@ -34,39 +32,31 @@ class WhatsAppService {
         const { connection, lastDisconnect, qr } = update;
   
         if (qr) {
-          console.log('QR code received, updating session document...');
           await this.sessionDocRef.set({ 
               status: 'pending',
               qr: qr,
               lastUpdated: admin.firestore.FieldValue.serverTimestamp()
           });
-          console.log('Session document updated with new QR code.');
         }
   
         if (connection === 'close') {
           const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-          console.log('Connection closed due to', lastDisconnect?.error, ', reconnecting:', shouldReconnect);
           if (shouldReconnect) {
-            // Use a brief delay before attempting to re-initialize to prevent rapid loops
-            setTimeout(() => this.init(), 5000);
+            this.init();
           } else {
-            console.log('Logged out. Setting session status to disconnected.');
             await this.sessionDocRef.set({ 
                 status: 'disconnected',
                 qr: null,
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             });
-            // Clean up session files on explicit logout
             await this.cleanupSession();
           }
         } else if (connection === 'open') {
-          console.log('Connection opened. Setting session status to connected.');
           await this.sessionDocRef.set({ 
               status: 'connected',
               qr: null,
               lastUpdated: admin.firestore.FieldValue.serverTimestamp()
           });
-          console.log('Session status updated to connected.');
         }
       });
 
@@ -76,16 +66,13 @@ class WhatsAppService {
       
         const chatId = msgInfo.key.remoteJid!;
         const messageContent = msgInfo.message.conversation || msgInfo.message.extendedTextMessage?.text || '';
-        if (!messageContent.trim()) {
-          console.log(`Ignoring empty message from ${chatId}`);
-          return;
-        }
+        if (!messageContent.trim()) return;
       
         const chatRef = db().collection('chats').doc(chatId);
         const messagesRef = chatRef.collection('messages');
       
         try {
-          await db().runTransaction(async (transaction: admin.firestore.Transaction) => {
+          await db().runTransaction(async (transaction) => {
             const chatDoc = await transaction.get(chatRef);
             const messageData = {
               id: msgInfo.key.id,
@@ -93,26 +80,21 @@ class WhatsAppService {
               text: messageContent,
               timestamp: admin.firestore.Timestamp.fromMillis(Number(msgInfo.messageTimestamp) * 1000),
             };
-            transaction.set(messagesRef.doc(msgInfo.key.id), messageData);
+            transaction.set(messagesRef.doc(msgInfo.key.id!), messageData);
       
-            const currentUnreadCount = chatDoc.exists ? chatDoc.data()?.unreadCount || 0 : 0;
-            
-            // Prepare base chat data
             const chatData: any = {
               id: chatId,
               lastMessage: messageContent,
               timestamp: admin.firestore.Timestamp.fromMillis(Number(msgInfo.messageTimestamp) * 1000),
-              unreadCount: msgInfo.key.fromMe ? 0 : currentUnreadCount + 1,
+              unreadCount: msgInfo.key.fromMe ? 0 : (chatDoc.data()?.unreadCount || 0) + 1,
             };
 
-            // Conditionally set the name to avoid overwriting an existing good name
             if (!chatDoc.exists || !chatDoc.data()?.name || chatDoc.data()?.name === chatId.split('@')[0]) {
                 chatData.name = msgInfo.pushName || chatId.split('@')[0];
             }
       
             transaction.set(chatRef, chatData, { merge: true });
           });
-          console.log(`Successfully saved message ${msgInfo.key.id} to chat ${chatId}`);
         } catch (error) {
           console.error(`Failed to save message:`, error);
         }
@@ -121,61 +103,33 @@ class WhatsAppService {
 
   private async cleanupSession() {
     try {
-      const sessionDir = path.resolve(SESSION_DIR);
-      const sessionExists = await fs.access(sessionDir).then(() => true).catch(() => false);
-      if (sessionExists) {
-        console.log(`Deleting session directory: ${sessionDir}`);
-        await fs.rm(sessionDir, { recursive: true, force: true });
-        console.log('Session directory deleted.');
-      }
+      await fs.rm(path.resolve(SESSION_DIR), { recursive: true, force: true });
     } catch (error) {
       console.error('Error during session cleanup:', error);
     }
   }
 
   public async logout() {
-    console.log('Starting logout process...');
-    // Disconnect the socket
     if (this.sock) {
       await this.sock.logout();
-      this.sock = null; // Clear the socket reference
+      this.sock = null;
     }
-    // Clean up the session files
     await this.cleanupSession();
-    // Update the status in Firestore
     await this.sessionDocRef.set({
       status: 'disconnected',
       qr: null,
       lastUpdated: admin.firestore.FieldValue.serverTimestamp()
     });
-    console.log('Logout process completed. Ready for a new session.');
-  }
-
-  private listenForOutgoingMessages() {
-    db().collection('outgoing_messages').onSnapshot(snapshot => {
-      snapshot.docChanges().forEach(async (change) => {
-        if (change.type === 'added') {
-          const { chatId, text } = change.doc.data();
-          if (chatId && text) {
-            try {
-              await this.sendMessage(chatId, text);
-              await change.doc.ref.delete();
-            } catch (error) {
-              console.error(`Failed to send outgoing message:`, error);
-            }
-          }
-        }
-      });
-    });
   }
 
   public async sendMessage(chatId: string, text: string) {
     if (this.sock && this.sock.user) {
-        console.log(`Sending message to ${chatId}: "${text}"`);
-        await this.sock.sendMessage(chatId, { text });
-        console.log(`Successfully sent message to ${chatId}`);
+        const result = await this.sock.sendMessage(chatId, { text });
+        if (!result) {
+            throw new Error('Message sending failed');
+        }
     } else {
-        console.error('Cannot send message, socket not connected or user not available.');
+        throw new Error('Socket not connected');
     }
   }
 }
