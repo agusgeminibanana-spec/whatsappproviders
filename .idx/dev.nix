@@ -2,6 +2,7 @@
   channel = "stable-24.05";
   packages = [
     pkgs.nodejs_22
+    pkgs.pnpm
   ];
   idx.extensions = [
     "svelte.svelte-vscode"
@@ -11,14 +12,7 @@
     previews = {
       web = {
         command = [
-          "npm"
-          "run"
-          "dev"
-          "--"
-          "--port"
-          "$PORT"
-          "--host"
-          "0.0.0.0"
+          "pnpm" "run" "dev" "--" "--port" "$PORT" "--host" "0.0.0.0"
         ];
         manager = "web";
       };

@@ -1,5 +1,16 @@
 import { defineConfig } from "vite";
 import path from "path";
+import fs from "fs";
+
+// Manually read and parse backend's package.json
+const backendPkgPath = path.resolve(__dirname, "./backend/package.json");
+const backendPkg = JSON.parse(fs.readFileSync(backendPkgPath, "utf-8"));
+
+// Extract dependencies to externalize them
+const external = [
+  ...Object.keys(backendPkg.dependencies || {}),
+  ...Object.keys(backendPkg.devDependencies || {}),
+];
 
 // Server build configuration
 export default defineConfig({
@@ -15,23 +26,9 @@ export default defineConfig({
     ssr: true,
     rollupOptions: {
       external: [
-        // Node.js built-ins
-        "fs",
-        "path",
-        "url",
-        "http",
-        "https",
-        "os",
-        "crypto",
-        "stream",
-        "util",
-        "events",
-        "buffer",
-        "querystring",
-        "child_process",
-        // External dependencies that should not be bundled
-        "express",
-        "cors",
+        // Node.js built-ins and all dependencies from package.json
+        ...external,
+        /^node:/, // Match all node built-ins
       ],
       output: {
         format: "es",
