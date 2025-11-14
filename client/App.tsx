@@ -17,22 +17,9 @@ import ChatDetail from "./pages/ChatDetail";
 import CRMDashboard from "./pages/CRMDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
 import NotFound from "./pages/NotFound";
+import ChatList from "./pages/ChatList";
 
 const queryClient = new QueryClient();
-
-/**
- * A universal route guard that enforces the authentication flow.
- * @param user - The current Firebase user object.
- * @param isAllowed - The condition that must be true to allow access.
- * @param redirectPath - The path to redirect to if access is denied.
- * @param children - The child components to render if access is granted.
- */
-const ProtectedRoute = ({ user, isAllowed, redirectPath, children }: { user: User | null; isAllowed: boolean; redirectPath: string; children?: React.ReactNode }) => {
-  if (!user || !isAllowed) {
-    return <Navigate to={redirectPath} replace />;
-  }
-  return children ? <>{children}</> : <Outlet />;
-};
 
 /**
  * Main component to manage application routes and state based on the definitive prompt.
@@ -78,39 +65,72 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* DEFAULT ROUTE: Handles initial redirection based on auth state */}
-      <Route 
+      {/* 1. ROOT PATH */}
+      {/* Acts as the main entry point and redirects based on authentication status. */}
+      <Route
         path="/"
-        element={!authGoogle ? <Login /> : <Navigate to={authWhatsapp ? "/chats" : "/whatsapp-qr"} replace />}
+        element={
+          <Navigate
+            to={
+              !authGoogle
+                ? "/login"
+                : !authWhatsapp
+                ? "/qr-connect"
+                : "/chats"
+            }
+            replace
+          />
+        }
       />
 
-      {/* LOGIN ROUTE: If user is fully authenticated, redirect them away from login */}
-      <Route 
+      {/* 2. LOGIN ROUTE */}
+      {/* If the user is already authenticated, redirect them to the appropriate next step. */}
+      <Route
         path="/login"
-        element={authGoogle && authWhatsapp ? <Navigate to="/chats" replace /> : <Login />}
+        element={
+          authGoogle ? (
+            <Navigate to={authWhatsapp ? "/chats" : "/qr-connect"} replace />
+          ) : (
+            <Login />
+          )
+        }
       />
 
-      {/* PROTECTED AREA: Requires at least Google Auth */}
-      <Route element={<ProtectedRoute user={authGoogle} isAllowed={!!authGoogle} redirectPath="/login" />}>
-        
-        {/* QR Page: Accessible if Google Auth is present but WhatsApp is not. */}
-        <Route 
-          path="/whatsapp-qr"
-          element={authWhatsapp ? <Navigate to="/chats" replace /> : <QRConnect />}
-        />
-        {/* Alias for QR page */}
-        <Route path="/qr" element={<Navigate to="/whatsapp-qr" replace />} />
+      {/* 3. QR-CONNECT ROUTE */}
+      {/* Requires Google auth. If not present, redirects to /login. */}
+      {/* If WhatsApp is already connected, redirects to the main app. */}
+      <Route
+        path="/qr-connect"
+        element={
+          !authGoogle ? (
+            <Navigate to="/login" replace />
+          ) : authWhatsapp ? (
+            <Navigate to="/chats" replace />
+          ) : (
+            <QRConnect />
+          )
+        }
+      />
 
-        {/* FULLY PROTECTED AREA: Requires both Google and WhatsApp Auth */}
-        <Route element={<ProtectedRoute user={authGoogle} isAllowed={authWhatsapp} redirectPath="/whatsapp-qr" />}>
-          <Route path="/chats" element={<AppLayout><Index /></AppLayout>} />
-          <Route path="/chat/:id" element={<AppLayout><ChatDetail /></AppLayout>} />
-          <Route path="/crm" element={<AppLayout><CRMDashboard /></AppLayout>} />
-          <Route path="/crm/:id" element={<AppLayout><CustomerProfile /></AppLayout>} />
-        </Route>
+      {/* 4. FULLY PROTECTED ROUTES */}
+      {/* These routes require both Google and WhatsApp authentication. */}
+      <Route
+        element={
+          authGoogle && authWhatsapp ? (
+            <Outlet />
+          ) : (
+            <Navigate to={!authGoogle ? "/login" : "/qr-connect"} replace />
+          )
+        }
+      >
+        <Route path="/chats" element={<AppLayout><ChatList /></AppLayout>} />
+        <Route path="/chat/:id" element={<AppLayout><ChatDetail /></AppLayout>} />
+        <Route path="/crm" element={<AppLayout><CRMDashboard /></AppLayout>} />
+        <Route path="/crm/:id" element={<AppLayout><CustomerProfile /></AppLayout>} />
       </Route>
 
-      {/* Catch-all for any undefined routes */}
+      {/* 5. CATCH-ALL ROUTE */}
+      {/* Handles any undefined paths. */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
