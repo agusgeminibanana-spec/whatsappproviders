@@ -13,6 +13,7 @@ class WhatsAppService {
   private sessionDocRef = db().collection('whatsapp_sessions').doc('fusion-app');
 
   public async init() {
+    // Session is now persisted. Cleanup happens on explicit logout.
     const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WA v${version.join('.')}, isLatest: ${isLatest}`);
@@ -55,8 +56,8 @@ class WhatsAppService {
                 qr: null,
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             });
-            // Optionally, we could also clean up the session files here
-            // await this.cleanupSession();
+            // Clean up session files on explicit logout
+            await this.cleanupSession();
           }
         } else if (connection === 'open') {
           console.log('Connection opened. Setting session status to connected.');
