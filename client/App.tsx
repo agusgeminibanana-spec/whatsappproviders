@@ -41,7 +41,7 @@ function AppRoutes() {
     if (authGoogle) {
       const sessionDocRef = doc(db, "whatsapp_sessions", "fusion-app");
       const unsubscribeDB = onSnapshot(sessionDocRef, (doc) => {
-        setAuthWhatsapp(doc.exists());
+        setAuthWhatsapp(doc.exists() && doc.data().status === 'connected');
       });
       return () => unsubscribeDB();
     } else {
