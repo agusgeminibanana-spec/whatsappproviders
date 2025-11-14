@@ -2,23 +2,16 @@
   "name": "fusion-starter",
   "private": true,
   "type": "module",
-  "pkg": {
-    "assets": [
-      "dist/spa/*"
-    ],
-    "scripts": [
-      "dist/server/**/*.js"
-    ]
-  },
   "scripts": {
-    "dev": "vite",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "vite build",
-    "build:server": "vite build --config vite.config.server.ts",
-    "start": "node dist/server/production.mjs",
-    "test": "vitest --run",
-    "format.fix": "prettier --write .",
-    "typecheck": "tsc"
+    "dev": "pnpm --filter=!firebase-tools run dev",
+    "build": "pnpm run build:client && pnpm run build:backend",
+    "build:client": "pnpm --filter client build",
+    "build:backend": "pnpm --filter backend build",
+    "start": "pnpm --filter backend start",
+    "gcp-build": "pnpm build"
+  },
+  "engines": {
+    "node": "20"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.21",
@@ -32,6 +25,7 @@
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.1",
+    "@quasar/cli": "^2.5.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -103,7 +97,7 @@
     "typescript": "^5.9.2",
     "vaul": "^1.1.2",
     "vite": "^7.1.2",
+    "vite-plugin-pwa": "^1.1.0",
     "vitest": "^3.2.4"
-  },
-  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
+  }
 }
