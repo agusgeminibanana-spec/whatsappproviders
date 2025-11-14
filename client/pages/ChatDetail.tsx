@@ -92,7 +92,7 @@ export default function ChatDetail() {
     setMessageInput('');
 
     try {
-      const response = await fetch('/api/chat/send', {
+      const response = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
