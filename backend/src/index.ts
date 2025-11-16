@@ -13,8 +13,9 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 
 if (process.env.NODE_ENV !== 'production') {
-  console.log('Development mode: Enabling CORS for localhost:9003');
-  app.use(cors({ origin: 'http://localhost:9003' }));
+  const devOrigin = process.env.DEV_CLIENT_ORIGIN || 'http://localhost:9002';
+  console.log(`Development mode: Enabling CORS for ${devOrigin}`);
+  app.use(cors({ origin: devOrigin }));
 }
 
 initializeFirebase();

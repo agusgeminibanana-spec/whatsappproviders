@@ -29,4 +29,8 @@ describe("cn function", () => {
       "base conditional",
     );
   });
+
+  it("should ignore undefined values and deduplicate classes", () => {
+    expect(cn("px-2", undefined, "px-2", "py-1")).toBe("px-2 py-1");
+  });
 });

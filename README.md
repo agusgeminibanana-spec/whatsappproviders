@@ -67,9 +67,9 @@ bash autorun.sh
 Esto hará dos cosas:
 
 1.  Instalará todas las dependencias con `pnpm install`.
-2.  Iniciará el servidor de desarrollo de Vite en `http://localhost:8080`.
+2.  Iniciará el servidor de desarrollo de Vite en `http://localhost:9002`.
 
-La primera vez que lo ejecutes, navega a `http://localhost:8080/qr` para escanear el código QR y conectar tu cuenta de WhatsApp. La sesión se guardará en Firestore.
+La primera vez que lo ejecutes, navega a `http://localhost:9002/qr` para escanear el código QR y conectar tu cuenta de WhatsApp. La sesión se guardará en Firestore.
 
 ---
 
