@@ -72,7 +72,7 @@ class WhatsAppService {
         const messagesRef = chatRef.collection('messages');
       
         try {
-          await db().runTransaction(async (transaction) => {
+          await db().runTransaction(async (transaction: any) => {
             const chatDoc = await transaction.get(chatRef);
             const messageData = {
               id: msgInfo.key.id,
