@@ -2,8 +2,8 @@
 
 Este proyecto usa un flujo obligatorio de tres páginas en el orden exacto:
 
-1. client/pages/Login.tsx  
-2. client/pages/QRConnect.tsx  
+1. client/pages/Login.tsx
+2. client/pages/QR.tsx
 3. client/pages/ChatList.tsx
 
 No se permite saltar ninguna etapa y las redirecciones deben ser inmediatas.
@@ -14,26 +14,26 @@ No se permite saltar ninguna etapa y las redirecciones deben ser inmediatas.
 
 ### Login.tsx (Google)
 - Si NO hay sesión de Google → mostrar Login.
-- Si SÍ hay sesión de Google → redirigir a QRConnect.
+- Si SÍ hay sesión de Google → redirigir a QR.
 
-### QRConnect.tsx (vincular WhatsApp)
+### QR.tsx (vincular WhatsApp)
 - Requiere sesión de Google.
 - Si NO hay sesión de WhatsApp → mostrar el QR.
 - Si SÍ hay sesión de WhatsApp → redirigir a ChatList.
 
 ### ChatList.tsx (acceso final)
 - Solo entrar si:
-  - authGoogle = true
-  - authWhatsapp = true
+- authGoogle = true
+- authWhatsapp = true
 - De lo contrario:
-  - Sin Google → regresar a Login.
-  - Sin WhatsApp → regresar a QRConnect.
+- Sin Google → regresar a Login.
+- Sin WhatsApp → regresar a QR.
 
 ---
 
 ## 2. Lógica global (route guard)
 
-if (!authGoogle) → /login if (authGoogle && !authWhatsapp) → /qrconnect if (authGoogle && authWhatsapp) → /chatlist
+if (!authGoogle) → /login if (authGoogle && !authWhatsapp) → /qr if (authGoogle && authWhatsapp) → /chatlist
 
 Esta lógica aplica siempre:
 - Al abrir la app
@@ -57,7 +57,7 @@ Esta lógica aplica siempre:
 - borrar sesión Baileys
 - eliminar datos en Firebase (Firestore, Storage, RTDB, caches)
 - authWhatsapp = false
-- redirigir a /qrconnect
+- redirigir a /qr
 - generar nuevo QR limpio
 
 ---
@@ -70,7 +70,7 @@ authGoogle: boolean authWhatsapp: boolean
 
 ## 5. Orden obligatorio del sistema
 
-Login.tsx → QRConnect.tsx → ChatList.tsx
+Login.tsx → QR.tsx → ChatList.tsx
 
 Sin excepciones.
 Redirecciones instantáneas.

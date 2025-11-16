@@ -7,5 +7,5 @@ echo "📦 Instalando dependencias con npm..."
 npm install
 
 # 2. Iniciar el servidor de desarrollo
-echo "🚀 Iniciando el servidor de desarrollo en http://localhost:8080"
+echo "🚀 Iniciando el servidor de desarrollo en http://localhost:9002"
 npm run dev
