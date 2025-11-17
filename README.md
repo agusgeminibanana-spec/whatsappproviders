@@ -117,3 +117,9 @@ La primera vez que lo ejecutes, navega a `http://localhost:9002/qr` para escanea
       ```
 
 Al finalizar, Firebase te dará la URL pública de tu aplicación.
+
+---
+
+## Configuración en Codex
+
+Si trabajas desde el IDE web **Codex** (Firebase/Google Cloud), consulta la guía rápida en [`docs/codex-setup.md`](docs/codex-setup.md) para saber cómo instalar dependencias, configurar variables y exponer el puerto de desarrollo.
