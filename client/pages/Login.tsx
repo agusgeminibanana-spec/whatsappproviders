@@ -1,31 +1,46 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Mail, Lock } from 'lucide-react';
+import { auth, googleProvider } from '@/firebase';
+import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    // Simulate Google login
-    setTimeout(() => {
+    setError(null);
+    try {
+      await signInWithPopup(auth, googleProvider);
       localStorage.setItem('isLoggedIn', 'true');
       navigate('/qr');
-    }, 1000);
+    } catch (err) {
+      console.error("Google login error:", err);
+      setError("Failed to sign in with Google.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEmailLogin = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
       setLoading(true);
-      // Simulate email login
-      setTimeout(() => {
+      setError(null);
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
         localStorage.setItem('isLoggedIn', 'true');
         navigate('/qr');
-      }, 1000);
+      } catch (err) {
+        console.error("Email login error:", err);
+        setError("Failed to sign in with email and password.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -88,6 +103,13 @@ export default function Login() {
             <h2 className="mb-2 text-2xl font-bold text-foreground">Welcome Back</h2>
             <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 rounded-md bg-red-100 border border-red-200 text-red-700 text-sm text-center">
+              {error}
+            </div>
+          )}
 
           {/* Google Login Button */}
           <button
@@ -173,8 +195,10 @@ export default function Login() {
             Don't have an account?{' '}
             <button
               onClick={() => {
-                localStorage.setItem('isLoggedIn', 'true');
-                navigate('/qr');
+                // For now, redirect to QR or a signup page if you have one
+                 // navigate('/signup'); 
+                 localStorage.setItem('isLoggedIn', 'true');
+                 navigate('/qr');
               }}
               className="font-medium text-primary hover:underline"
             >

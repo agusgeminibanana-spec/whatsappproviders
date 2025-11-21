@@ -6,8 +6,43 @@ export default function QRConnect() {
   const navigate = useNavigate();
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
 
-  // Simulate QR code scanning
+  // Fetch QR code and check status
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        // In a real implementation, this would be an SSE or WebSocket connection
+        // for real-time updates. Here we poll for demonstration.
+        const response = await fetch('/api/whatsapp/status');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.qr) {
+                setQrCode(data.qr);
+            }
+            if (data.status === 'connected') {
+                setConnectionStatus('connected');
+                setScanned(true);
+                setTimeout(() => {
+                    localStorage.setItem('qrConnected', 'true');
+                    navigate('/chats');
+                }, 1500);
+            }
+        }
+      } catch (error) {
+        console.error('Error fetching status:', error);
+      }
+    };
+
+    const interval = setInterval(fetchStatus, 2000); // Poll every 2 seconds
+    fetchStatus(); // Initial fetch
+
+    return () => clearInterval(interval);
+  }, [navigate]);
+
+
+  // Simulate QR code scanning (Keep this for testing if backend fails)
   const handleSimulateScanning = () => {
     setLoading(true);
     setTimeout(() => {
@@ -103,46 +138,24 @@ export default function QRConnect() {
             {!scanned ? (
               <div className="relative">
                 {/* QR Code Background */}
-                <div className="w-64 h-64 bg-white rounded-2xl shadow-2xl p-4 flex items-center justify-center">
-                  {loading && (
+                <div className="w-64 h-64 bg-white rounded-2xl shadow-2xl p-4 flex items-center justify-center overflow-hidden">
+                  {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-2xl backdrop-blur-sm">
                       <div className="flex flex-col items-center">
                         <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
                         <p className="text-sm text-foreground font-medium">Connecting...</p>
                       </div>
                     </div>
+                  ) : qrCode ? (
+                       <img src={qrCode} alt="WhatsApp QR Code" className="w-full h-full object-contain" />
+                  ) : (
+                      // Fallback/Loading state while waiting for QR from backend
+                      <div className="flex flex-col items-center justify-center h-full w-full">
+                           <div className="h-8 w-8 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-2" />
+                           <p className="text-xs text-muted-foreground">Loading QR Code...</p>
+                      </div>
                   )}
-                  {/* Simulated QR Code Pattern */}
-                  <svg
-                    width="220"
-                    height="220"
-                    viewBox="0 0 220 220"
-                    fill="none"
-                    className="text-gray-900"
-                  >
-                    {/* QR Code Pattern */}
-                    <rect width="220" height="220" fill="white" />
-                    {/* Finder patterns */}
-                    <rect x="10" y="10" width="50" height="50" fill="black" />
-                    <rect x="14" y="14" width="42" height="42" fill="white" />
-                    <rect x="18" y="18" width="34" height="34" fill="black" />
-
-                    <rect x="160" y="10" width="50" height="50" fill="black" />
-                    <rect x="164" y="14" width="42" height="42" fill="white" />
-                    <rect x="168" y="18" width="34" height="34" fill="black" />
-
-                    <rect x="10" y="160" width="50" height="50" fill="black" />
-                    <rect x="14" y="164" width="42" height="42" fill="white" />
-                    <rect x="18" y="168" width="34" height="34" fill="black" />
-
-                    {/* Timing patterns */}
-                    <line x1="60" y1="6" x2="160" y2="6" stroke="black" strokeWidth="6" />
-                    <line x1="6" y1="60" x2="6" y2="160" stroke="black" strokeWidth="6" />
-
-                    {/* Data pattern (random-like) */}
-                    <rect x="70" y="70" width="80" height="80" fill="black" opacity="0.5" />
-                    <circle cx="110" cy="110" r="8" fill="black" />
-                  </svg>
+                  
                 </div>
 
                 {/* Scanning Indicator */}
@@ -161,15 +174,18 @@ export default function QRConnect() {
             )}
           </div>
 
-          {/* Scan Button */}
-          {!scanned && (
-            <button
-              onClick={handleSimulateScanning}
-              disabled={loading}
-              className="w-full mb-4 rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? 'Scanning...' : 'Simulate Scanning QR Code'}
-            </button>
+          {/* Scan Button - Keep for manual fallback or simulation */}
+          {!scanned && !qrCode && (
+             <div className="w-full mb-4 text-center">
+                <p className="text-xs text-muted-foreground mb-2">Backend QR generation not detected.</p>
+                <button
+                onClick={handleSimulateScanning}
+                disabled={loading}
+                className="w-full rounded-lg bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                {loading ? 'Scanning...' : 'Simulate Scanning QR Code'}
+                </button>
+             </div>
           )}
 
           {/* Alternative Method */}

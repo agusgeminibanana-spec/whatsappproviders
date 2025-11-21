@@ -9,9 +9,12 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     fs: {
-      allow: ["./client", "./shared"],
+      allow: [path.resolve(__dirname)],
       deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "server/**"],
     },
+    hmr: {
+      overlay: false
+    }
   },
   build: {
     outDir: "dist/spa",
@@ -23,6 +26,9 @@ export default defineConfig(({ mode }) => ({
       "@shared": path.resolve(__dirname, "./shared"),
     },
   },
+  optimizeDeps: {
+    include: ['firebase/auth', 'firebase/app', 'firebase/analytics', 'firebase/firestore']
+  }
 }));
 
 function expressPlugin(): Plugin {
