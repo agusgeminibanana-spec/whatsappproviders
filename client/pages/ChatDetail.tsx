@@ -1,239 +1,222 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, Video, MoreVertical, Send, Paperclip, Smile, Check, CheckCheck } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import {
+  ArrowLeft,
+  Phone,
+  Video,
+  MoreVertical,
+  Send,
+  Paperclip,
+  Smile,
+} from "lucide-react";
 
 interface Message {
   id: string;
-  content: string;
+  content: string; // Changed from 'text'
   fromMe: boolean;
-  timestamp: string;
-  status?: 'sent' | 'delivered' | 'read';
+  timestamp: string; // Changed from Timestamp
 }
+
+interface ChatContact {
+  id: string;
+  name: string;
+}
+
+const formatTimestamp = (isoString: string) => {
+  if (!isoString) return "";
+  return new Date(isoString).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const getInitials = (name: string) => {
+  if (!name) return "?";
+  const words = name.split(" ");
+  if (words.length > 1) return words[0][0] + words[1][0];
+  return name.substring(0, 2);
+};
 
 export default function ChatDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [messageInput, setMessageInput] = useState("");
+  const [contact, setContact] = useState<ChatContact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const contactId = id ? decodeURIComponent(id) : "unknown";
-  const contactName = contactId.split("@")[0];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Basic contact info from URL
+    if (id) {
+      const decodedId = decodeURIComponent(id);
+      setContact({
+        id: decodedId,
+        name: decodedId.split("@")[0],
+      });
+    }
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
+    const decodedId = decodeURIComponent(id);
+
     const fetchMessages = async () => {
       try {
-        const encodedId = encodeURIComponent(contactId);
-        const response = await fetch(`/api/whatsapp/chats/${encodedId}/messages`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data) {
-            setMessages(data.data.map((m: any) => ({
-                id: m.id,
-                content: m.content,
-                fromMe: m.fromMe,
-                timestamp: m.timestamp,
-                status: 'read' // Mock status for now
-            })));
-          }
+        const res = await fetch(
+          `/api/whatsapp/chats/${encodeURIComponent(decodedId)}/messages`,
+        );
+        if (res.ok) {
+          const data = (await res.json()).data || [];
+          setMessages(data);
         }
       } catch (error) {
-        console.error("Error fetching messages:", error);
-      } finally {
-        setLoading(false);
+        console.error("Failed to fetch messages", error);
       }
     };
     fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
+    const interval = setInterval(fetchMessages, 3000); // Poll for new messages
     return () => clearInterval(interval);
-  }, [contactId, id]);
+  }, [id]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() || !id) return;
 
-    const payload = { phone: contactId, message: messageInput };
-    const tempMsg: Message = {
+    const text = messageInput;
+    setMessageInput("");
+
+    // Optimistic UI update
+    setMessages((prev) => [
+      ...prev,
+      {
         id: Date.now().toString(),
-        content: payload.message,
+        content: text,
         fromMe: true,
         timestamp: new Date().toISOString(),
-        status: 'sent'
-    };
-
-    setMessageInput("");
-    setMessages((prev) => [...prev, tempMsg]);
+      },
+    ]);
 
     try {
-      await fetch("/api/whatsapp/send-message", {
+      const response = await fetch("/api/whatsapp/send-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ phone: id, message: text }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
     } catch (error) {
-      console.error("Error sending:", error);
+      console.error("Error sending message:", error);
+      // Revert optimistic update (optional)
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("phone", contactId);
-    formData.append("image", file);
-    
-    setMessages((prev) => [...prev, {
-        id: Date.now().toString(),
-        content: "📷 Sending image...",
-        fromMe: true,
-        timestamp: new Date().toISOString(),
-        status: 'sent'
-    }]);
-
-    try {
-      await fetch("/api/whatsapp/send-image", { method: "POST", body: formData });
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Error sending image:", error);
-    }
-  };
+  if (!contact) {
+    return <div>Loading chat...</div>;
+  }
 
   return (
-    <div className="flex h-full w-full flex-col bg-background relative">
-      {/* Header */}
-      <div className="h-16 px-4 flex items-center justify-between border-b border-border/60 bg-card/80 backdrop-blur-md z-20 absolute top-0 w-full">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/chats")} className="sm:hidden -ml-2">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Avatar className="h-10 w-10 ring-2 ring-background">
-            <AvatarImage src="" /> {/* Todo: Add avatar */}
-            <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white font-semibold">
-              {contactName.substring(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="font-semibold text-sm leading-none">{contactName}</h3>
-            <span className="text-xs text-green-500 font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
-                Online
-            </span>
+    <div className="flex h-full w-full flex-col bg-gradient-to-b from-background to-secondary/30">
+      <div className="border-b border-border bg-background px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/chats")}
+              className="p-2 hover:bg-secondary rounded-full transition-colors sm:hidden"
+            >
+              <ArrowLeft className="h-5 w-5 text-foreground" />
+            </button>
+            <div className="relative flex-shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                {getInitials(contact.name)}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-semibold text-foreground">{contact.name}</h2>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-1 text-muted-foreground">
-          <Button variant="ghost" size="icon" className="hover:text-foreground"><Phone className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="hover:text-foreground"><Video className="h-5 w-5" /></Button>
-          <Button variant="ghost" size="icon" className="hover:text-foreground"><MoreVertical className="h-5 w-5" /></Button>
+          <div className="flex items-center gap-2">
+            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+              <Phone className="h-5 w-5 text-foreground" />
+            </button>
+            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+              <Video className="h-5 w-5 text-foreground" />
+            </button>
+            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
+              <MoreVertical className="h-5 w-5 text-foreground" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 pt-16 pb-20 bg-muted/5 overflow-hidden relative">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-             style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-        </div>
-
-        <ScrollArea className="h-full px-4 py-4">
-          <div className="space-y-6 max-w-3xl mx-auto">
-            <AnimatePresence initial={false}>
-            {messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                className={cn(
-                  "flex w-full",
-                  message.fromMe ? "justify-end" : "justify-start"
-                )}
-              >
-                <div className={cn(
-                    "max-w-[80%] sm:max-w-[65%] relative group",
-                    message.fromMe ? "items-end" : "items-start"
-                )}>
-                    <div className={cn(
-                        "px-4 py-2.5 rounded-2xl text-sm shadow-sm relative z-10",
-                        message.fromMe 
-                            ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                            : "bg-card border border-border/50 rounded-tl-sm"
-                    )}>
-                        <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                    
-                    <div className={cn(
-                        "flex items-center gap-1 mt-1 text-[10px] opacity-70 px-1",
-                        message.fromMe ? "justify-end" : "justify-start"
-                    )}>
-                        <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        {message.fromMe && (
-                            <CheckCheck className="w-3 h-3" />
-                        )}
-                    </div>
-                </div>
-              </motion.div>
-            ))}
-            </AnimatePresence>
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-      </div>
-
-      {/* Input Area */}
-      <div className="absolute bottom-0 w-full bg-card/80 backdrop-blur-md border-t border-border p-3 z-20">
-        <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex items-end gap-2">
-          <div className="flex gap-1 pb-1">
-             <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-                <Smile className="h-5 w-5" />
-             </Button>
-             <div className="relative">
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => fileInputRef.current?.click()}>
-                    <Paperclip className="h-5 w-5" />
-                </Button>
-             </div>
-          </div>
-
-          <div className="flex-1 bg-muted/50 rounded-2xl border border-transparent focus-within:border-primary/30 focus-within:bg-background transition-all">
-             <Input 
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                placeholder="Type a message..."
-                className="border-none bg-transparent focus-visible:ring-0 py-3 h-auto max-h-32"
-             />
-          </div>
-
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={!messageInput.trim()}
-            className={cn(
-                "rounded-full w-10 h-10 mb-0.5 transition-all",
-                messageInput.trim() 
-                    ? "bg-primary hover:bg-primary/90 scale-100" 
-                    : "bg-muted text-muted-foreground hover:bg-muted scale-90 opacity-50"
-            )}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${
+              message.fromMe ? "justify-end" : "justify-start"
+            }`}
           >
-            <Send className="h-5 w-5 ml-0.5" />
-          </Button>
+            <div
+              className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2 ${
+                message.fromMe
+                  ? "bg-primary text-primary-foreground rounded-br-none"
+                  : "bg-card text-card-foreground border border-border rounded-bl-none"
+              }`}
+            >
+              <p className="break-words text-sm">{message.content}</p>
+              <div
+                className={`mt-1 flex items-center justify-end gap-1 text-xs ${
+                  message.fromMe
+                    ? "text-primary-foreground/70"
+                    : "text-muted-foreground"
+                }`}
+              >
+                <span>{formatTimestamp(message.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="border-t border-border bg-background px-4 py-3">
+        <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+          <button
+            type="button"
+            className="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0"
+          >
+            <Smile className="h-5 w-5 text-foreground" />
+          </button>
+          <button
+            type="button"
+            className="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0"
+          >
+            <Paperclip className="h-5 w-5 text-foreground" />
+          </button>
+          <input
+            type="text"
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            type="submit"
+            disabled={!messageInput.trim()}
+            className="p-2 hover:bg-primary/10 rounded-full transition-colors flex-shrink-0 disabled:opacity-50"
+          >
+            <Send className="h-5 w-5 text-primary" />
+          </button>
         </form>
       </div>
     </div>

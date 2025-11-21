@@ -1,16 +1,8 @@
 /**
  * Servicio para interactuar con la API de WhatsApp (Baileys)
- *
- * Uso:
- *   import { whatsappService } from '@/services/whatsapp';
- *
- *   const result = await whatsappService.sendMessage('5491234567890', 'Hola!');
  */
 
-import * as React from 'react';
-
-// Use relative path for production (same domain) or localhost for local dev if strictly needed, 
-// but relative '/api/whatsapp' works best for proxy/rewrites.
+// Use relative path so it works with Vite proxy (dev) and Firebase rewrites (prod)
 const API_BASE_URL = '/api/whatsapp';
 
 interface SendMessageParams {
@@ -44,13 +36,15 @@ interface ApiResponse<T = any> {
   [key: string]: any;
 }
 
-/**
- * Verificar estado de conexión a WhatsApp
- */
 export async function checkWhatsAppStatus(): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/status`);
-    if (!response.ok) throw new Error('Error al verificar estado');
+    // Handle non-JSON responses (like 404 HTML or 500 HTML)
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+         throw new Error(`Invalid server response: ${response.status}`);
+    }
+    if (!response.ok) throw new Error('Error checking status');
     return await response.json();
   } catch (error) {
     console.error('Error checking WhatsApp status:', error);
@@ -58,9 +52,6 @@ export async function checkWhatsAppStatus(): Promise<ApiResponse> {
   }
 }
 
-/**
- * Enviar mensaje de texto
- */
 export async function sendMessage(params: SendMessageParams): Promise<ApiResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/send-message`, {
@@ -71,21 +62,25 @@ export async function sendMessage(params: SendMessageParams): Promise<ApiRespons
       body: JSON.stringify(params),
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al enviar mensaje');
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+         const text = await response.text();
+         console.error("Server returned non-JSON:", text);
+         throw new Error(`Server error: ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Error sending message');
+    }
+
+    return data;
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;
   }
 }
 
-/**
- * Enviar imagen con caption opcional
- */
 export async function sendImage(params: SendImageParams): Promise<ApiResponse> {
   try {
     const formData = new FormData();
@@ -103,7 +98,7 @@ export async function sendImage(params: SendImageParams): Promise<ApiResponse> {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Error al enviar imagen');
+      throw new Error(error.error || 'Error sending image');
     }
 
     return await response.json();
@@ -113,207 +108,8 @@ export async function sendImage(params: SendImageParams): Promise<ApiResponse> {
   }
 }
 
-/**
- * Enviar mensaje con menciones
- */
-export async function sendMention(params: SendMentionParams): Promise<ApiResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/send-mention`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al enviar mención');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error sending mention:', error);
-    throw error;
-  }
-}
-
-/**
- * Crear grupo
- */
-export async function createGroup(params: CreateGroupParams): Promise<ApiResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/create-group`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al crear grupo');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error creating group:', error);
-    throw error;
-  }
-}
-
-/**
- * Actualizar asunto/nombre del grupo
- */
-export async function updateGroupSubject(
-  groupId: string,
-  subject: string
-): Promise<ApiResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/update-group-subject`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ groupId, subject }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al actualizar grupo');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error updating group subject:', error);
-    throw error;
-  }
-}
-
-/**
- * Bloquear o desbloquear contacto
- */
-export async function updateBlockStatus(
-  phone: string,
-  action: 'block' | 'unblock'
-): Promise<ApiResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/block-contact`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ phone, action }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al actualizar bloqueo');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error updating block status:', error);
-    throw error;
-  }
-}
-
-/**
- * Archivar o desarchivar chat
- */
-export async function archiveChat(
-  phone: string,
-  archive: boolean = true
-): Promise<ApiResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/archive-chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ phone, archive }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al archivar chat');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error archiving chat:', error);
-    throw error;
-  }
-}
-
-/**
- * Eliminar mensaje
- */
-export async function deleteMessage(
-  phone: string,
-  messageId: string
-): Promise<ApiResponse> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/delete-message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ phone, messageId }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Error al eliminar mensaje');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error deleting message:', error);
-    throw error;
-  }
-}
-
-/**
- * Hook para usar el servicio en componentes React (opcional)
- */
-export function useWhatsAppApi() {
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<Error | null>(null);
-  const [data, setData] = React.useState<ApiResponse | null>(null);
-
-  const execute = React.useCallback(
-    async (apiFunction: (...args: any[]) => Promise<ApiResponse>, ...args: any[]) => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await apiFunction(...args);
-        setData(result);
-        return result;
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        setError(error);
-        throw error;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
-
-  return { execute, loading, error, data };
-}
-
-// Exportar como objeto para facilitar el uso
 export const whatsappService = {
   checkStatus: checkWhatsAppStatus,
   sendMessage,
   sendImage,
-  sendMention,
-  createGroup,
-  updateGroupSubject,
-  blockContact: updateBlockStatus,
-  archiveChat,
-  deleteMessage,
 };

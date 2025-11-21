@@ -6,6 +6,37 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "**/*.@(js|css|svg|png|jpg|jpeg|gif|ico|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self' https://premium-ember-475717-c9.firebaseapp.com; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://webapp-joqpgf6iqa-uc.a.run.app https://*.googleapis.com wss://*.firebasedatabase.app; img-src 'self' data: https:; frame-src 'self' https://apis.google.com;"
+          }
+        ]
+      }
+    ],
     "rewrites": [
       {
         "source": "/api/**",

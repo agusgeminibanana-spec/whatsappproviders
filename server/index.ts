@@ -6,7 +6,11 @@ import { whatsappRouter } from "./routes/whatsapp";
 
 export function createServer() {
   const app = express();
+
+  // More robust CORS handling
+  // This handles the preflight OPTIONS request correctly.
   app.use(cors({ origin: true }));
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
@@ -28,11 +32,9 @@ export function createServer() {
         if (capturedJsonResponse) {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
         }
-
         if (logLine.length > 80) {
           logLine = logLine.slice(0, 79) + "…";
         }
-
         console.log(logLine);
       }
     });

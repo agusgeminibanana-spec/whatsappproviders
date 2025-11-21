@@ -1,216 +1,149 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Plus, MessageSquare, Settings, LogOut } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { auth } from "@/firebase";
+import { Search, MessageCircle } from "lucide-react";
 
 interface Chat {
   id: string;
   name: string;
-  avatar?: string;
   lastMessage: string;
-  timestamp: string;
-  unread: number;
-  jid?: string;
+  timestamp: string; // Changed from Timestamp to string to match API
+  unreadCount: number;
 }
+
+const formatTimestamp = (isoString: string) => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const getInitials = (name: string) => {
+  if (!name) return "?";
+  const words = name.split(" ");
+  if (words.length > 1) return words[0][0] + words[1][0];
+  return name.substring(0, 2);
+};
 
 export default function ChatList() {
   const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const location = useLocation(); // To detect active chat
+  const location = useLocation();
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const statusRes = await fetch("/api/whatsapp/status");
-        const statusData = await statusRes.json();
-
-        if (statusData.status !== "connected" || !statusData.user) {
+        if (!statusRes.ok || (await statusRes.json()).status !== "connected") {
           navigate("/qr");
           return;
         }
 
         const chatsRes = await fetch("/api/whatsapp/chats");
         if (chatsRes.ok) {
-          const chatsData = await chatsRes.json();
-          const mappedChats = (chatsData.data || []).map((c: any) => {
-            const msgDate = c.lastMessageTimestamp
-              ? new Date(c.lastMessageTimestamp)
-              : new Date();
-            // Format date nicely (e.g. "10:30 AM" or "Yesterday")
-            const isToday = new Date().toDateString() === msgDate.toDateString();
-            const timeStr = isToday 
-                ? msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                : msgDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-            return {
+          const chatsData = (await chatsRes.json()).data || [];
+          setChats(
+            chatsData.map((c: any) => ({
               id: c.id,
               name: c.name || c.id.replace("@s.whatsapp.net", ""),
-              avatar: c.avatar,
-              lastMessage: c.lastMessage || "No messages yet",
-              timestamp: timeStr,
-              unread: c.unreadCount || 0,
-              jid: c.id,
-            };
-          });
-          setChats(mappedChats);
+              lastMessage: c.lastMessage || "",
+              timestamp: c.lastMessageTimestamp,
+              unreadCount: c.unreadCount || 0,
+            })),
+          );
         }
-        setLoading(false);
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error("Error fetching data:", error);
+      } finally {
         setLoading(false);
       }
     };
-
     loadData();
-    const interval = setInterval(loadData, 5000);
+    const interval = setInterval(loadData, 5000); // Poll for updates
     return () => clearInterval(interval);
   }, [navigate]);
 
   const filteredChats = chats.filter(
     (chat) =>
-      chat.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      chat.id?.includes(searchQuery),
+      chat.name && chat.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleLogout = async () => {
-      await auth.signOut();
-      localStorage.clear();
-      navigate('/');
-  };
-
   return (
-    <div className="flex w-full h-full bg-background overflow-hidden">
-      {/* Sidebar */}
-      <motion.div 
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="w-full sm:w-[400px] flex flex-col border-r border-border bg-card/50 backdrop-blur-xl relative z-10"
-      >
-        {/* Header */}
-        <div className="p-4 flex items-center justify-between border-b border-border/50">
-          <div className="flex items-center gap-3">
-             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                 <MessageSquare className="h-5 w-5" />
-             </div>
-             <h1 className="text-xl font-bold tracking-tight">Messages</h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-                <LogOut className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Plus className="h-5 w-5 text-muted-foreground" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="px-4 py-3">
-          <div className="relative group">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              placeholder="Search chats..."
+    <div className="flex w-full h-full bg-background">
+      <div className="w-full sm:w-96 flex flex-col border-r border-border bg-background">
+        <div className="border-b border-border p-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search or start new chat"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-muted/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-200"
+              className="w-full rounded-full bg-secondary px-4 py-2 pl-10 text-sm"
             />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           </div>
         </div>
 
-        {/* Chat List */}
-        <ScrollArea className="flex-1 px-2">
-          {loading ? (
-            <div className="flex flex-col gap-2 p-4">
-               {[1, 2, 3].map((i) => (
-                   <div key={i} className="h-16 w-full bg-muted/30 rounded-lg animate-pulse" />
-               ))}
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p>Loading chats...</p>
+          </div>
+        ) : filteredChats.length > 0 ? (
+          <div className="flex-1 overflow-y-auto">
+            {filteredChats.map((chat) => (
+              <Link
+                key={chat.id}
+                to={`/chat/${encodeURIComponent(chat.id)}`}
+                className="flex items-start gap-3 border-b border-border px-4 py-3 hover:bg-secondary"
+              >
+                <div className="relative mt-1 flex-shrink-0">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    {getInitials(chat.name)}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold truncate">{chat.name}</h3>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {formatTimestamp(chat.timestamp)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground truncate">
+                    {chat.lastMessage}
+                  </p>
+                </div>
+                {chat.unreadCount > 0 && (
+                  <div className="ml-2 flex-shrink-0 self-center">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs">
+                      {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
+                    </div>
+                  </div>
+                )}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-center p-4">
+            <div>
+              <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h2 className="mt-2 text-lg font-semibold">No Chats Yet</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your conversations will appear here.
+              </p>
             </div>
-          ) : filteredChats.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-              <Search className="h-8 w-8 mb-2 opacity-20" />
-              <p>No chats found</p>
-            </div>
-          ) : (
-            <div className="space-y-1 py-2">
-              <AnimatePresence>
-              {filteredChats.map((chat) => {
-                const isActive = location.pathname.includes(encodeURIComponent(chat.id));
-                return (
-                <Link key={chat.id} to={`/chat/${encodeURIComponent(chat.id)}`}>
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className={cn(
-                        "flex items-center gap-4 p-3 rounded-xl transition-all duration-200 cursor-pointer group border border-transparent",
-                        isActive 
-                            ? "bg-primary/10 border-primary/10 shadow-sm" 
-                            : "hover:bg-muted/50 hover:border-border/50"
-                      )}
-                    >
-                      <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
-                        <AvatarImage src={chat.avatar} className="object-cover" />
-                        <AvatarFallback className={cn(isActive ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                          {chat.name.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+          </div>
+        )}
+      </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-1">
-                          <h3 className={cn("font-semibold truncate", isActive ? "text-primary" : "text-foreground")}>
-                              {chat.name}
-                          </h3>
-                          <span className="text-[11px] text-muted-foreground font-medium">
-                              {chat.timestamp}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm text-muted-foreground truncate max-w-[180px]">
-                            {chat.lastMessage}
-                          </p>
-                          {chat.unread > 0 && (
-                            <Badge className="h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground animate-in zoom-in duration-300">
-                              {chat.unread}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                </Link>
-              )})}
-              </AnimatePresence>
-            </div>
-          )}
-        </ScrollArea>
-      </motion.div>
-
-      {/* Empty State / Outlet Placeholder */}
-      <div className="hidden sm:flex flex-1 flex-col items-center justify-center bg-muted/10 p-8 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]" />
-        <div className="relative z-10 flex flex-col items-center">
-            <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", bounce: 0.5 }}
-                className="h-24 w-24 bg-gradient-to-br from-primary to-purple-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-primary/20"
-            >
-                <MessageSquare className="h-10 w-10 text-white" />
-            </motion.div>
-            <h2 className="text-3xl font-bold mb-3 tracking-tight">WhatsApp Web</h2>
-            <p className="text-muted-foreground max-w-sm text-lg">
-            Select a chat from the sidebar to start messaging securely.
-            </p>
+      <div className="hidden sm:flex flex-1 items-center justify-center bg-gradient-to-br from-background to-secondary">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Select a chat</h2>
+          <p className="text-muted-foreground">
+            Choose a conversation from the left to start messaging.
+          </p>
         </div>
       </div>
     </div>

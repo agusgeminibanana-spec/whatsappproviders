@@ -14,7 +14,7 @@ export default function Login() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        navigate('/chats'); // Direct to chats, let ChatList handle connection check
+        navigate('/chats');
       }
     });
     return () => unsubscribe();
@@ -24,13 +24,13 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      // Switch to Popup for better stability in this environment
+      // Revert to Popup for stability
       await signInWithPopup(auth, googleProvider);
-      // onAuthStateChanged will handle redirect
     } catch (err: any) {
       console.error("Google login error:", err);
       setError("Failed to sign in with Google: " + err.message);
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -44,14 +44,14 @@ export default function Login() {
       } catch (err: any) {
         console.error("Email login error:", err);
         setError("Failed to sign in: " + err.message);
-        setLoading(false);
+      } finally {
+          setLoading(false);
       }
     }
   };
 
   return (
     <div className="flex h-screen w-full bg-gradient-to-br from-background via-background to-primary/10">
-      {/* Left Side - Branding */}
       <div className="hidden lg:flex w-1/2 flex-col items-center justify-center bg-gradient-to-br from-primary/20 to-background/50 p-12">
         <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 backdrop-blur-xl border border-primary/30">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary">
@@ -62,61 +62,18 @@ export default function Login() {
         <p className="text-center text-lg text-muted-foreground">
           Simple. Reliable. Messaging
         </p>
-        <div className="mt-12 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-              <MessageCircle className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Instant Messaging</p>
-              <p className="text-sm text-muted-foreground">Send messages instantly</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-              <MessageCircle className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">End-to-End Encrypted</p>
-              <p className="text-sm text-muted-foreground">Your messages are private</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-              <MessageCircle className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Free and Available</p>
-              <p className="text-sm text-muted-foreground">No charges for messaging</p>
-            </div>
-          </div>
-        </div>
       </div>
-
-      {/* Right Side - Login Form */}
       <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
-          {/* Mobile Logo */}
-          <div className="mb-8 flex lg:hidden flex-col items-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-              <MessageCircle className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">WhatsApp</h1>
-          </div>
-
           <div className="mb-8 text-center">
             <h2 className="mb-2 text-2xl font-bold text-foreground">Welcome Back</h2>
             <p className="text-muted-foreground">Sign in to your account to continue</p>
           </div>
-
-          {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
               {error}
             </div>
           )}
-
-          {/* Google Login Button */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
@@ -142,15 +99,11 @@ export default function Login() {
             </svg>
             {loading ? 'Signing in...' : 'Sign in with Google'}
           </button>
-
-          {/* Divider */}
           <div className="mb-6 flex items-center gap-4">
             <div className="flex-1 border-t border-border" />
             <span className="text-xs text-muted-foreground">OR</span>
             <div className="flex-1 border-t border-border" />
           </div>
-
-          {/* Email/Password Form */}
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
@@ -164,11 +117,10 @@ export default function Login() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground"
                 />
               </div>
             </div>
-
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
                 Password
@@ -181,38 +133,18 @@ export default function Login() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground"
                 />
               </div>
             </div>
-
             <button
               type="submit"
               disabled={!email || !password || loading}
-              className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-
-          {/* Sign Up Link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <button
-              onClick={() => {
-                 // navigate('/signup'); 
-                 // For now, just let them login, same UI
-              }}
-              className="font-medium text-primary hover:underline"
-            >
-              Create one
-            </button>
-          </p>
-
-          {/* Footer */}
-          <div className="mt-8 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-            <p>By signing in, you agree to our Terms of Service</p>
-          </div>
         </div>
       </div>
     </div>
