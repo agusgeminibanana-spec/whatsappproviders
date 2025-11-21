@@ -1,9 +1,12 @@
+import "./init-firebase"; // Ensure Firebase is initialized first
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { whatsappRouter } from "./routes/whatsapp";
 
 export function createServer() {
   const app = express();
+  app.use(cors({ origin: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 

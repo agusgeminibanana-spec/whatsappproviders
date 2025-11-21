@@ -1,6 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, Mail, MapPin, Calendar, MessageSquare, Tag, Edit, Trash2, Plus } from 'lucide-react';
+import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/firebase';
+
+// Types matching Firestore data
+interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar: string;
+  company: string;
+  position?: string;
+  status: string;
+  tags: string[];
+  address?: string;
+  // joinDate?: string; // Not always present
+  // totalValue?: string;
+  notes: string;
+  isFavorite: boolean;
+  interactions?: Interaction[];
+}
 
 interface Interaction {
   id: string;
@@ -10,100 +31,80 @@ interface Interaction {
   details?: string;
 }
 
-const contactsData: Record<string, any> = {
-  '1': {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@company.com',
-    phone: '+1 (555) 123-4567',
-    avatar: 'SJ',
-    company: 'Tech Corp',
-    position: 'Sales Director',
-    status: 'active',
-    tags: ['Sales', 'VIP', 'Premium'],
-    address: '123 Tech Avenue, San Francisco, CA 94105',
-    joinDate: '2021-03-15',
-    totalValue: '$125,000',
-    notes: 'Interested in premium plan upgrade. Very responsive client.',
-    isFavorite: true,
-    interactions: [
-      {
-        id: '1',
-        type: 'message',
-        content: 'Sounds great! See you tomorrow',
-        timestamp: '2 hours ago',
-        details: 'WhatsApp message received',
-      },
-      {
-        id: '2',
-        type: 'call',
-        content: 'Product demo call',
-        timestamp: '1 day ago',
-        details: '45 minutes duration',
-      },
-      {
-        id: '3',
-        type: 'email',
-        content: 'Sent proposal documents',
-        timestamp: '2 days ago',
-        details: '3 attachments included',
-      },
-      {
-        id: '4',
-        type: 'note',
-        content: 'Client interested in enterprise plan',
-        timestamp: '3 days ago',
-        details: 'Added by: Michael Brown',
-      },
-      {
-        id: '5',
-        type: 'message',
-        content: 'Can we schedule a meeting?',
-        timestamp: '1 week ago',
-        details: 'WhatsApp message sent',
-      },
-    ],
-  },
-  '2': {
-    id: '2',
-    name: 'John Smith',
-    email: 'john.smith@startup.com',
-    phone: '+1 (555) 234-5678',
-    avatar: 'JS',
-    company: 'Startup Inc',
-    position: 'CTO',
-    status: 'active',
-    tags: ['Support', 'Enterprise', 'Technical'],
-    address: '456 Innovation Blvd, Austin, TX 78704',
-    joinDate: '2022-07-20',
-    totalValue: '$75,000',
-    notes: 'Technical contact. Prefers detailed documentation.',
-    isFavorite: false,
-    interactions: [
-      {
-        id: '1',
-        type: 'message',
-        content: 'Thanks for the recommendation!',
-        timestamp: '1 day ago',
-        details: 'WhatsApp message received',
-      },
-      {
-        id: '2',
-        type: 'email',
-        content: 'Technical specification request',
-        timestamp: '3 days ago',
-        details: 'Sent API documentation',
-      },
-    ],
-  },
-};
-
 export default function CustomerProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const contact = id ? contactsData[id] : null;
+  
+  const [contact, setContact] = useState<Contact | null>(null);
+  const [loading, setLoading] = useState(true);
   const [editingNote, setEditingNote] = useState(false);
-  const [newNote, setNewNote] = useState(contact?.notes || '');
+  const [newNote, setNewNote] = useState('');
+
+  useEffect(() => {
+      if (!id) return;
+
+      const fetchContact = async () => {
+          try {
+              const docRef = doc(db, 'contacts', id);
+              const docSnap = await getDoc(docRef);
+
+              if (docSnap.exists()) {
+                  setContact({ id: docSnap.id, ...docSnap.data() } as Contact);
+                  setNewNote(docSnap.data().notes || '');
+              } else {
+                  console.log("No such contact!");
+              }
+          } catch (error) {
+              console.error("Error getting contact:", error);
+          } finally {
+              setLoading(false);
+          }
+      };
+
+      fetchContact();
+  }, [id]);
+
+  const handleSaveNote = async () => {
+      if (!id || !contact) return;
+      try {
+          const docRef = doc(db, 'contacts', id);
+          await updateDoc(docRef, { notes: newNote });
+          setContact({ ...contact, notes: newNote });
+          setEditingNote(false);
+      } catch (error) {
+          console.error("Error updating note:", error);
+      }
+  };
+
+  const handleDeleteContact = async () => {
+      if (!id) return;
+      if (confirm("Are you sure you want to delete this contact?")) {
+          try {
+              await deleteDoc(doc(db, 'contacts', id));
+              navigate('/crm');
+          } catch (error) {
+              console.error("Error deleting contact:", error);
+          }
+      }
+  };
+
+  const handleSendMessage = () => {
+      // Navigate to chat with this phone number (assuming phone is valid JID-like or cleaner)
+      if (contact?.phone) {
+          // Basic cleanup, assuming phone might be '+123...'
+          // In a real app, robust normalization is needed
+          const cleanPhone = contact.phone.replace(/[^0-9]/g, '');
+          navigate(`/chat/${cleanPhone}@s.whatsapp.net`);
+      }
+  };
+
+  if (loading) {
+      return (
+          <div className="flex h-full w-full items-center justify-center bg-background">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+      );
+  }
 
   if (!contact) {
     return (
@@ -135,13 +136,13 @@ export default function CustomerProfile() {
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xl">
-              {contact.avatar}
+              {contact.avatar || contact.name.charAt(0)}
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">{contact.name}</h1>
-              <p className="text-sm text-muted-foreground">{contact.position} at {contact.company}</p>
+              <p className="text-sm text-muted-foreground">{contact.position || 'Unknown Position'} at {contact.company || 'Unknown Company'}</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {contact.tags.map((tag: string) => (
+                {contact.tags && contact.tags.map((tag: string) => (
                   <span
                     key={tag}
                     className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2 py-1 text-xs text-primary"
@@ -169,21 +170,21 @@ export default function CustomerProfile() {
                   <Mail className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="text-foreground">{contact.email}</p>
+                    <p className="text-foreground">{contact.email || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Phone</p>
-                    <p className="text-foreground">{contact.phone}</p>
+                    <p className="text-foreground">{contact.phone || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <MapPin className="mt-1 h-5 w-5 text-muted-foreground flex-shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">Address</p>
-                    <p className="text-foreground">{contact.address}</p>
+                    <p className="text-foreground">{contact.address || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -199,7 +200,7 @@ export default function CustomerProfile() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Position</p>
-                  <p className="font-semibold text-foreground">{contact.position}</p>
+                  <p className="font-semibold text-foreground">{contact.position || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Status</p>
@@ -207,7 +208,8 @@ export default function CustomerProfile() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Total Value</p>
-                  <p className="font-semibold text-foreground">{contact.totalValue}</p>
+                  {/* <p className="font-semibold text-foreground">{contact.totalValue || 'N/A'}</p> */}
+                  <p className="font-semibold text-foreground">N/A</p>
                 </div>
               </div>
             </div>
@@ -239,7 +241,7 @@ export default function CustomerProfile() {
                       Cancel
                     </button>
                     <button
-                      onClick={() => setEditingNote(false)}
+                      onClick={handleSaveNote}
                       className="flex-1 rounded-lg bg-primary px-3 py-1 text-sm text-primary-foreground hover:bg-primary/90 transition-colors"
                     >
                       Save
@@ -247,7 +249,7 @@ export default function CustomerProfile() {
                   </div>
                 </div>
               ) : (
-                <p className="text-muted-foreground">{contact.notes}</p>
+                <p className="text-muted-foreground">{contact.notes || 'No notes added.'}</p>
               )}
             </div>
 
@@ -261,7 +263,7 @@ export default function CustomerProfile() {
                 </button>
               </div>
               <div className="space-y-4">
-                {contact.interactions.map((interaction: Interaction) => (
+                {contact.interactions && contact.interactions.length > 0 ? contact.interactions.map((interaction: Interaction) => (
                   <div key={interaction.id} className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary">
                       {interaction.type === 'message' && (
@@ -288,7 +290,9 @@ export default function CustomerProfile() {
                       )}
                     </div>
                   </div>
-                ))}
+                )) : (
+                    <p className="text-sm text-muted-foreground">No interaction history.</p>
+                )}
               </div>
             </div>
           </div>
@@ -301,22 +305,27 @@ export default function CustomerProfile() {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Member Since</p>
-                  <p className="font-semibold text-foreground">{contact.joinDate}</p>
+                  {/* <p className="font-semibold text-foreground">{contact.joinDate}</p> */}
+                  <p className="font-semibold text-foreground">N/A</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Total Interactions</p>
-                  <p className="font-semibold text-foreground">{contact.interactions.length}</p>
+                  <p className="font-semibold text-foreground">{contact.interactions?.length || 0}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Account Value</p>
-                  <p className="font-semibold text-foreground">{contact.totalValue}</p>
+                  {/* <p className="font-semibold text-foreground">{contact.totalValue}</p> */}
+                  <p className="font-semibold text-foreground">N/A</p>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
             <div className="space-y-2">
-              <button className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+              <button 
+                onClick={handleSendMessage}
+                className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
                 Send Message
               </button>
               <button className="w-full rounded-lg border border-border px-4 py-2 font-medium text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-2">
@@ -331,7 +340,10 @@ export default function CustomerProfile() {
 
             {/* Danger Zone */}
             <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
-              <button className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-red-500 hover:bg-red-500/20 transition-colors">
+              <button 
+                onClick={handleDeleteContact}
+                className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-red-500 hover:bg-red-500/20 transition-colors"
+              >
                 <Trash2 className="h-4 w-4" />
                 Delete Contact
               </button>

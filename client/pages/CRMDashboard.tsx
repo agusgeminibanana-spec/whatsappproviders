@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Plus, Filter, Star, Tag, MessageSquare, Phone, Mail, Clock } from 'lucide-react';
+import { getFirestore, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { db } from '@/firebase';
 
 interface Contact {
   id: string;
@@ -18,96 +20,72 @@ interface Contact {
 }
 
 export default function CRMDashboard() {
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@company.com',
-      phone: '+1 (555) 123-4567',
-      avatar: 'SJ',
-      status: 'active',
-      tags: ['Sales', 'VIP'],
-      lastContact: '2 hours ago',
-      interactions: 28,
-      notes: 'Interested in premium plan upgrade',
-      company: 'Tech Corp',
-      isFavorite: true,
-    },
-    {
-      id: '2',
-      name: 'John Smith',
-      email: 'john.smith@startup.com',
-      phone: '+1 (555) 234-5678',
-      avatar: 'JS',
-      status: 'active',
-      tags: ['Support', 'Enterprise'],
-      lastContact: '1 day ago',
-      interactions: 15,
-      notes: 'Account manager: Michael Brown',
-      company: 'Startup Inc',
-      isFavorite: false,
-    },
-    {
-      id: '3',
-      name: 'Emma Davis',
-      email: 'emma.davis@corp.com',
-      phone: '+1 (555) 345-6789',
-      avatar: 'ED',
-      status: 'lead',
-      tags: ['Prospect', 'Marketing'],
-      lastContact: '3 days ago',
-      interactions: 8,
-      notes: 'Sent proposal on Monday',
-      company: 'Corporate Solutions',
-      isFavorite: false,
-    },
-    {
-      id: '4',
-      name: 'Michael Brown',
-      email: 'michael.brown@agency.com',
-      phone: '+1 (555) 456-7890',
-      avatar: 'MB',
-      status: 'active',
-      tags: ['Partner', 'Agency'],
-      lastContact: '5 days ago',
-      interactions: 42,
-      notes: 'Regular account review scheduled monthly',
-      company: 'Digital Agency',
-      isFavorite: true,
-    },
-    {
-      id: '5',
-      name: 'Lisa Chen',
-      email: 'lisa.chen@retail.com',
-      phone: '+1 (555) 567-8901',
-      avatar: 'LC',
-      status: 'active',
-      tags: ['Retail', 'Support'],
-      lastContact: '1 week ago',
-      interactions: 19,
-      notes: 'Bulk order inquiry in progress',
-      company: 'Retail Solutions',
-      isFavorite: false,
-    },
-    {
-      id: '6',
-      name: 'James Wilson',
-      email: 'james.wilson@finance.com',
-      phone: '+1 (555) 678-9012',
-      avatar: 'JW',
-      status: 'inactive',
-      tags: ['Finance', 'Inactive'],
-      lastContact: '3 weeks ago',
-      interactions: 5,
-      notes: 'No activity since Q3',
-      company: 'Financial Group',
-      isFavorite: false,
-    },
-  ]);
-
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive' | 'lead'>('all');
   const [showNewContactModal, setShowNewContactModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // New contact form state
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactCompany, setNewContactCompany] = useState('');
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const contactsRef = collection(db, 'contacts');
+        const q = query(contactsRef); // You can add limits or ordering here
+        const querySnapshot = await getDocs(q);
+        
+        const loadedContacts: Contact[] = [];
+        querySnapshot.forEach((doc) => {
+          loadedContacts.push({ id: doc.id, ...doc.data() } as Contact);
+        });
+
+        // If empty (first run), maybe we could load some defaults or just show empty
+        setContacts(loadedContacts);
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContacts();
+  }, []);
+
+  const handleAddContact = async () => {
+      if (!newContactName) return;
+
+      const newContact: Omit<Contact, 'id'> = {
+          name: newContactName,
+          email: newContactEmail,
+          phone: newContactPhone,
+          company: newContactCompany,
+          avatar: newContactName.substring(0, 2).toUpperCase(),
+          status: 'lead',
+          tags: [],
+          lastContact: 'Just now',
+          interactions: 0,
+          notes: '',
+          isFavorite: false
+      };
+
+      try {
+          const docRef = await addDoc(collection(db, 'contacts'), newContact);
+          setContacts([...contacts, { id: docRef.id, ...newContact }]);
+          setShowNewContactModal(false);
+          // Reset form
+          setNewContactName('');
+          setNewContactEmail('');
+          setNewContactPhone('');
+          setNewContactCompany('');
+      } catch (e) {
+          console.error("Error adding contact: ", e);
+      }
+  };
 
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch =
@@ -132,6 +110,7 @@ export default function CRMDashboard() {
   };
 
   const toggleFavorite = (id: string) => {
+      // In a real app, update Firestore here
     setContacts(contacts.map((c) => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c)));
   };
 
@@ -206,7 +185,11 @@ export default function CRMDashboard() {
 
       {/* Contacts List */}
       <div className="flex-1 overflow-y-auto">
-        {filteredContacts.length === 0 ? (
+          {loading ? (
+               <div className="flex h-full items-center justify-center">
+                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+               </div>
+          ) : filteredContacts.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
               <Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
@@ -264,7 +247,7 @@ export default function CRMDashboard() {
                       >
                         {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                       </span>
-                      {contact.tags.map((tag) => (
+                      {contact.tags && contact.tags.map((tag) => (
                         <span
                           key={tag}
                           className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-muted-foreground"
@@ -309,21 +292,29 @@ export default function CRMDashboard() {
               <input
                 type="text"
                 placeholder="Full Name"
+                value={newContactName}
+                onChange={(e) => setNewContactName(e.target.value)}
                 className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
                 type="email"
                 placeholder="Email Address"
+                value={newContactEmail}
+                onChange={(e) => setNewContactEmail(e.target.value)}
                 className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
                 type="tel"
                 placeholder="Phone Number"
+                value={newContactPhone}
+                onChange={(e) => setNewContactPhone(e.target.value)}
                 className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <input
                 type="text"
                 placeholder="Company"
+                value={newContactCompany}
+                onChange={(e) => setNewContactCompany(e.target.value)}
                 className="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <div className="flex gap-3 pt-4">
@@ -334,7 +325,7 @@ export default function CRMDashboard() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => setShowNewContactModal(false)}
+                  onClick={handleAddContact}
                   className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                   Add Contact

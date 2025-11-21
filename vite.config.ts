@@ -1,16 +1,19 @@
 import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { createServer } from "./server";
+import { VitePWA } from 'vite-plugin-pwa';
 
-// https://vitejs.dev/config/
+// Import the server factory for dev mode
+// We use a dynamic import in the plugin to avoid issues during build time if server deps aren't perfect
+import { createServer } from "./server/index";
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
     fs: {
       allow: [path.resolve(__dirname)],
-      deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "server/**"],
+      deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**"],
     },
     hmr: {
       overlay: false
@@ -19,7 +22,27 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist/spa",
   },
-  plugins: [react(), expressPlugin()],
+  plugins: [
+    react(), 
+    expressPlugin(), // Re-enable express plugin for dev
+    VitePWA({ 
+      registerType: 'autoUpdate',
+      includeAssets: ['whatsapp.svg', 'robots.txt'],
+      manifest: {
+        name: 'WhatsApp Web Clone',
+        short_name: 'WhatsApp',
+        description: 'WhatsApp Web Clone with Firebase Backend',
+        theme_color: '#128C7E',
+        icons: [
+          {
+            src: 'whatsapp.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml'
+          }
+        ]
+      }
+    })
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./client"),
@@ -37,7 +60,6 @@ function expressPlugin(): Plugin {
     apply: "serve", // Only apply during development (serve mode)
     configureServer(server) {
       const app = createServer();
-
       // Add Express app as middleware to Vite dev server
       server.middlewares.use(app);
     },

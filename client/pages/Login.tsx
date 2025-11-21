@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Mail, Lock } from 'lucide-react';
 import { auth, googleProvider } from '@/firebase';
-import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,17 +11,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate('/chats'); // Direct to chats, let ChatList handle connection check
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
     try {
+      // Switch to Popup for better stability in this environment
       await signInWithPopup(auth, googleProvider);
-      localStorage.setItem('isLoggedIn', 'true');
-      navigate('/qr');
-    } catch (err) {
+      // onAuthStateChanged will handle redirect
+    } catch (err: any) {
       console.error("Google login error:", err);
-      setError("Failed to sign in with Google.");
-    } finally {
+      setError("Failed to sign in with Google: " + err.message);
       setLoading(false);
     }
   };
@@ -33,12 +41,9 @@ export default function Login() {
       setError(null);
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        localStorage.setItem('isLoggedIn', 'true');
-        navigate('/qr');
-      } catch (err) {
+      } catch (err: any) {
         console.error("Email login error:", err);
-        setError("Failed to sign in with email and password.");
-      } finally {
+        setError("Failed to sign in: " + err.message);
         setLoading(false);
       }
     }
@@ -106,7 +111,7 @@ export default function Login() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 rounded-md bg-red-100 border border-red-200 text-red-700 text-sm text-center">
+            <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
               {error}
             </div>
           )}
@@ -195,10 +200,8 @@ export default function Login() {
             Don't have an account?{' '}
             <button
               onClick={() => {
-                // For now, redirect to QR or a signup page if you have one
                  // navigate('/signup'); 
-                 localStorage.setItem('isLoggedIn', 'true');
-                 navigate('/qr');
+                 // For now, just let them login, same UI
               }}
               className="font-medium text-primary hover:underline"
             >

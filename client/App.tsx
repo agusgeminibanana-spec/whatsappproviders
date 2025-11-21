@@ -14,18 +14,48 @@ import ChatDetail from "./pages/ChatDetail";
 import CRMDashboard from "./pages/CRMDashboard";
 import CustomerProfile from "./pages/CustomerProfile";
 import NotFound from "./pages/NotFound";
+import { auth } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 const queryClient = new QueryClient();
 
 const QRRoute = ({ children }: { children: React.ReactNode }) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn');
-  return isLoggedIn ? children : <Navigate to="/" />;
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  
+  return user ? children : <Navigate to="/" />;
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn');
-  const qrConnected = localStorage.getItem('qrConnected');
-  return isLoggedIn && qrConnected ? <AppLayout>{children}</AppLayout> : isLoggedIn ? <Navigate to="/qr" /> : <Navigate to="/" />;
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // We remove the 'qrConnected' local storage check here because:
+  // 1. It's unreliable (localStorage persists even if session invalid)
+  // 2. The component itself (ChatList) now verifies the connection with the backend
+  // 3. If connection is invalid, ChatList will redirect to /qr
+  
+  if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+
+  return user ? <AppLayout>{children}</AppLayout> : <Navigate to="/" />;
 };
 
 const App = () => {
