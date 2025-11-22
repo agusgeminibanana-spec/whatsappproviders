@@ -1,20 +1,24 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Mail, Lock } from 'lucide-react';
-import { auth, googleProvider } from '@/firebase';
-import { signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageCircle, Mail, Lock } from "lucide-react";
+import { auth, googleProvider } from "@/firebase";
+import {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+} from "firebase/auth";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        navigate('/chats');
+        navigate("/chats");
       }
     });
     return () => unsubscribe();
@@ -24,13 +28,12 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      // Revert to Popup for stability
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
       console.error("Google login error:", err);
-      setError("Failed to sign in with Google: " + err.message);
+      setError("Error al iniciar sesión con Google: " + err.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -41,17 +44,18 @@ export default function Login() {
       setError(null);
       try {
         await signInWithEmailAndPassword(auth, email, password);
-      } catch (err: any) {
+      } catch (err: any) { // Added curly braces here
         console.error("Email login error:", err);
-        setError("Failed to sign in: " + err.message);
+        setError("Error al iniciar sesión: " + err.message);
       } finally {
-          setLoading(false);
+        setLoading(false);
       }
     }
   };
 
   return (
     <div className="flex h-screen w-full bg-gradient-to-br from-background via-background to-primary/10">
+      {/* Left Side - Branding */}
       <div className="hidden lg:flex w-1/2 flex-col items-center justify-center bg-gradient-to-br from-primary/20 to-background/50 p-12">
         <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-primary/20 backdrop-blur-xl border border-primary/30">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary">
@@ -60,14 +64,20 @@ export default function Login() {
         </div>
         <h1 className="mb-4 text-5xl font-bold text-foreground">WhatsApp</h1>
         <p className="text-center text-lg text-muted-foreground">
-          Simple. Reliable. Messaging
+          Simple. Confiable. Mensajería.
         </p>
       </div>
+
+      {/* Right Side - Login Form */}
       <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <h2 className="mb-2 text-2xl font-bold text-foreground">Welcome Back</h2>
-            <p className="text-muted-foreground">Sign in to your account to continue</p>
+            <h2 className="mb-2 text-2xl font-bold text-foreground">
+              Bienvenido de nuevo
+            </h2>
+            <p className="text-muted-foreground">
+              Inicia sesión en tu cuenta para continuar
+            </p>
           </div>
           {error && (
             <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-500 text-sm text-center">
@@ -97,24 +107,27 @@ export default function Login() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {loading ? 'Signing in...' : 'Sign in with Google'}
+            {loading ? "Iniciando sesión..." : "Inicia sesión con Google"}
           </button>
           <div className="mb-6 flex items-center gap-4">
             <div className="flex-1 border-t border-border" />
-            <span className="text-xs text-muted-foreground">OR</span>
+            <span className="text-xs text-muted-foreground">O</span>
             <div className="flex-1 border-t border-border" />
           </div>
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                Email Address
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-foreground mb-2"
+              >
+                Dirección de correo electrónico
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                 <input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="tu@ejemplo.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-border bg-secondary px-4 py-2 pl-10 text-foreground"
@@ -122,8 +135,11 @@ export default function Login() {
               </div>
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                Password
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-foreground mb-2"
+              >
+                Contraseña
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
@@ -142,7 +158,7 @@ export default function Login() {
               disabled={!email || !password || loading}
               className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
             </button>
           </form>
         </div>

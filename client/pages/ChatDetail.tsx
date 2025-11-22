@@ -8,215 +8,237 @@ import {
   Send,
   Paperclip,
   Smile,
+  Sparkles,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { whatsappService } from "@/services/whatsapp";
 
 interface Message {
   id: string;
-  content: string; // Changed from 'text'
+  content: string;
   fromMe: boolean;
-  timestamp: string; // Changed from Timestamp
-}
-
-interface ChatContact {
-  id: string;
-  name: string;
+  timestamp: string;
 }
 
 const formatTimestamp = (isoString: string) => {
   if (!isoString) return "";
-  return new Date(isoString).toLocaleTimeString("en-US", {
-    hour: "numeric",
+  return new Date(isoString).toLocaleTimeString([], {
+    hour: "2-digit",
     minute: "2-digit",
   });
-};
-
-const getInitials = (name: string) => {
-  if (!name) return "?";
-  const words = name.split(" ");
-  if (words.length > 1) return words[0][0] + words[1][0];
-  return name.substring(0, 2);
 };
 
 export default function ChatDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [messageInput, setMessageInput] = useState("");
-  const [contact, setContact] = useState<ChatContact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+
+  const contactId = id ? decodeURIComponent(id) : "unknown";
+  const contactName = contactId.split("@")[0];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    // Basic contact info from URL
-    if (id) {
-      const decodedId = decodeURIComponent(id);
-      setContact({
-        id: decodedId,
-        name: decodedId.split("@")[0],
-      });
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (!id) return;
-    const decodedId = decodeURIComponent(id);
-
-    const fetchMessages = async () => {
-      try {
-        const res = await fetch(
-          `/api/whatsapp/chats/${encodeURIComponent(decodedId)}/messages`,
-        );
-        if (res.ok) {
-          const data = (await res.json()).data || [];
-          setMessages(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch messages", error);
-      }
-    };
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 3000); // Poll for new messages
-    return () => clearInterval(interval);
-  }, [id]);
-
-  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (!id) return;
+    const fetchMessages = async () => {
+      try {
+        const encodedId = encodeURIComponent(contactId);
+        const response = await fetch(
+          `/api/whatsapp/chats/${encodedId}/messages`,
+        );
+        if (response.ok) {
+          setMessages((await response.json()).data || []);
+        }
+      } catch (error) {
+        console.error("Error al cargar mensajes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000);
+    return () => clearInterval(interval);
+  }, [contactId, id]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !id) return;
-
+    if (!messageInput.trim()) return;
     const text = messageInput;
     setMessageInput("");
-
-    // Optimistic UI update
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        content: text,
-        fromMe: true,
-        timestamp: new Date().toISOString(),
-      },
-    ]);
-
+    setSuggestions([]);
     try {
-      const response = await fetch("/api/whatsapp/send-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: id, message: text }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      // Revert optimistic update (optional)
+      await whatsappService.sendMessage({ phone: contactId, message: text });
+    } catch (error: any) {
+      console.error("Error enviando mensaje:", error);
     }
   };
 
-  if (!contact) {
-    return <div>Loading chat...</div>;
-  }
+  const handleGetSuggestions = async () => {
+    setIsSuggesting(true);
+    setSuggestions([]);
+    try {
+      const res = await fetch("/api/whatsapp/suggest-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      });
+      if (res.ok) {
+        setSuggestions((await res.json()).suggestions || []);
+      }
+    } catch (error) {
+      console.error("Error obteniendo sugerencias:", error);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setMessageInput(suggestion);
+    setSuggestions([]);
+  };
 
   return (
-    <div className="flex h-full w-full flex-col bg-gradient-to-b from-background to-secondary/30">
-      <div className="border-b border-border bg-background px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/chats")}
-              className="p-2 hover:bg-secondary rounded-full transition-colors sm:hidden"
-            >
-              <ArrowLeft className="h-5 w-5 text-foreground" />
-            </button>
-            <div className="relative flex-shrink-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
-                {getInitials(contact.name)}
-              </div>
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-semibold text-foreground">{contact.name}</h2>
-            </div>
+    <div className="flex h-full w-full flex-col bg-background">
+      <div className="border-b border-border bg-card px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/chats")}
+            className="sm:hidden"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <Avatar>
+            <AvatarFallback>
+              {contactName.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="font-medium">{contactName}</h3>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <Phone className="h-5 w-5 text-foreground" />
-            </button>
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <Video className="h-5 w-5 text-foreground" />
-            </button>
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <MoreVertical className="h-5 w-5 text-foreground" />
-            </button>
-          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon">
+            <Phone className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <Video className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <MoreVertical className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.fromMe ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2 ${
-                message.fromMe
-                  ? "bg-primary text-primary-foreground rounded-br-none"
-                  : "bg-card text-card-foreground border border-border rounded-bl-none"
-              }`}
-            >
-              <p className="break-words text-sm">{message.content}</p>
-              <div
-                className={`mt-1 flex items-center justify-end gap-1 text-xs ${
-                  message.fromMe
-                    ? "text-primary-foreground/70"
-                    : "text-muted-foreground"
+      <ScrollArea className="flex-1 p-4 bg-muted/10">
+        <div className="space-y-4">
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${
+                  message.fromMe ? "justify-end" : "justify-start"
                 }`}
               >
-                <span>{formatTimestamp(message.timestamp)}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+                <div
+                  className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${
+                    message.fromMe
+                      ? "bg-primary text-primary-foreground rounded-br-none"
+                      : "bg-card border rounded-bl-none"
+                  }`}
+                >
+                  <p className="text-sm break-words">{message.content}</p>
+                  <div
+                    className={`text-[10px] mt-1 text-right ${
+                      message.fromMe
+                        ? "text-primary-foreground/70"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {formatTimestamp(message.timestamp)}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
 
-      <div className="border-t border-border bg-background px-4 py-3">
+      <div className="p-4 bg-card border-t">
+        <AnimatePresence>
+          {suggestions.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-2 flex gap-2 overflow-x-auto pb-2"
+            >
+              {suggestions.map((s, i) => (
+                <motion.button
+                  key={i}
+                  onClick={() => handleSuggestionClick(s)}
+                  className="px-3 py-1.5 bg-muted rounded-full text-sm"
+                >
+                  {s}
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-          <button
-            type="button"
-            className="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0"
-          >
-            <Smile className="h-5 w-5 text-foreground" />
-          </button>
-          <button
-            type="button"
-            className="p-2 hover:bg-secondary rounded-full transition-colors flex-shrink-0"
-          >
-            <Paperclip className="h-5 w-5 text-foreground" />
-          </button>
-          <input
-            type="text"
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 rounded-full bg-secondary px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <button
-            type="submit"
-            disabled={!messageInput.trim()}
-            className="p-2 hover:bg-primary/10 rounded-full transition-colors flex-shrink-0 disabled:opacity-50"
-          >
-            <Send className="h-5 w-5 text-primary" />
-          </button>
+          <Button variant="ghost" size="icon" type="button">
+            <Smile className="h-5 w-5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="icon" type="button">
+            <Paperclip className="h-5 w-5 text-muted-foreground" />
+          </Button>
+          <div className="relative flex-1">
+            <Input
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="Escribe un mensaje..."
+              className="pr-10"
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              type="button"
+              onClick={handleGetSuggestions}
+              disabled={isSuggesting}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+            >
+              {isSuggesting ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2"></div>
+              ) : (
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </div>
+          <Button type="submit" size="icon" disabled={!messageInput.trim()}>
+            <Send className="h-5 w-5" />
+          </Button>
         </form>
       </div>
     </div>
